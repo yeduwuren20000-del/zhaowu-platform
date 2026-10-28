@@ -1,0 +1,56 @@
+name: 功能建议 / Feature request
+description: 新能力或现有能力的改进
+labels: ['enhancement']
+body:
+  - type: markdown
+    attributes:
+      value: |
+        本项目刻意保持四条边界：**本地优先、只读采集、零数据库、不做后台高频轮询**。
+        与这些边界冲突的建议（云厂商接入、常驻守护进程、数据库存储、任意远程命令执行）大概率不会被合并，欢迎先开讨论。
+  - type: textarea
+    id: problem
+    attributes:
+      label: 你想解决的实际问题
+      description: 请描述场景，而不是直接给方案。"我在管理 6 台机器时不得不……"比"加一个批量按钮"更有用
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: 你设想的用法
+      description: 在哪个页面、点什么、看到什么
+    validations:
+      required: true
+  - type: dropdown
+    id: area
+    attributes:
+      label: 涉及范围
+      multiple: true
+      options:
+        - 本地项目与启停
+        - 端口与进程检测
+        - 自动发现
+        - 项目聚合
+        - SSH 监控
+        - Docker 监控
+        - 生命周期时间线
+        - 界面与交互
+        - 测试与 CI
+        - 文档
+    validations:
+      required: true
+  - type: textarea
+    id: readonly
+    attributes:
+      label: 是否需要新的采集命令
+      description: 如果需要，请写出具体命令并说明它为什么是只读的（不会改动远端状态）
+      placeholder: '例如：docker logs --tail 200 <name>（只读，不改变容器状态）'
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: 提交前确认
+      options:
+        - label: 我已搜索过现有 Issue，没有重复
+          required: true
+        - label: 我理解只读采集与零数据库是本项目的硬约束
+          required: true

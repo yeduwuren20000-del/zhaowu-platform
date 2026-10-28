@@ -1,0 +1,124 @@
+/* 服务生命周期时间线：事件流，不做卡片瀑布 */
+
+.timeline {
+  display: flex;
+  flex-direction: column;
+  position: relative;
+}
+
+/* 同一项目的连续事件视觉分组 */
+.timeline__group + .timeline__group {
+  margin-top: 2px;
+  border-top: 1px solid var(--border-soft);
+}
+
+.timeline__group-head {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  padding: 6px 8px 2px;
+  font-size: var(--fs-xs);
+  color: var(--muted);
+}
+
+.timeline__group-name {
+  color: var(--text-soft);
+  font-weight: 600;
+}
+
+.timeline__group-count {
+  font-family: var(--mono);
+  color: var(--muted-2);
+}
+
+.timeline__item {
+  display: grid;
+  grid-template-columns: 68px 14px minmax(0, 1fr);
+  align-items: start;
+  gap: 8px;
+  padding: 5px 8px;
+  border-radius: var(--radius-sm);
+  transition: background var(--t) var(--ease);
+}
+
+.timeline__item:hover {
+  background: var(--hover);
+}
+
+.timeline__time {
+  font-size: var(--fs-xs);
+  color: var(--muted-2);
+  font-family: var(--mono);
+  padding-top: 1px;
+  white-space: nowrap;
+}
+
+.timeline__dot {
+  width: 7px;
+  height: 7px;
+  margin: 6px 0 0 3px;
+  border-radius: 50%;
+  background: var(--muted-2);
+}
+
+.timeline__main {
+  min-width: 0;
+}
+
+.timeline__head {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  flex-wrap: wrap;
+}
+
+.timeline__tag {
+  font-size: var(--fs-xs);
+  color: var(--muted);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-xs);
+  padding: 0 5px;
+  background: var(--surface-2);
+}
+
+.timeline__msg {
+  font-size: var(--fs-md);
+  color: var(--text-soft);
+  word-break: break-word;
+}
+
+.timeline__detail {
+  margin-top: 2px;
+  font-size: var(--fs-xs);
+  color: var(--muted);
+  word-break: break-word;
+}
+
+.timeline__facts {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-top: 2px;
+  font-size: var(--fs-xs);
+  color: var(--muted-2);
+  font-family: var(--mono);
+}
+
+.timeline__foot {
+  margin-top: 2px;
+  display: flex;
+  gap: 9px;
+  font-size: var(--fs-xs);
+}
+
+.project-timeline {
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px solid var(--border);
+}
+
+.timeline-page__counts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+}

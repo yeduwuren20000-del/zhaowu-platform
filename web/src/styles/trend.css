@@ -1,0 +1,185 @@
+/* 第七阶段·第三轮：资源历史趋势 */
+
+.trend {
+  margin-top: 14px;
+  padding: 12px 14px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  background: var(--surface-2);
+}
+
+.trend__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-bottom: 10px;
+}
+
+.trend__title {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--text-soft);
+}
+
+/* 窗口切换：复用项目既有的"小标签"观感，不用彩色徽标 */
+.tab-chip {
+  height: 24px;
+  padding: 0 9px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+  color: var(--muted);
+  font-size: var(--fs-xs);
+  cursor: pointer;
+  transition: color 0.14s ease, border-color 0.14s ease;
+}
+
+.tab-chip:hover {
+  color: var(--text-soft);
+  border-color: var(--border-strong);
+}
+
+.tab-chip.is-active {
+  color: var(--text);
+  border-color: var(--accent);
+  background: var(--surface-3);
+}
+
+.trend__grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 12px 18px;
+}
+
+.trend__cell {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+
+.trend__empty {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+  padding: 10px 0 2px;
+}
+
+.trend__stale,
+.trend__gaps {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: var(--fs-xs);
+  color: var(--amber);
+  margin-bottom: 8px;
+}
+
+.trend__gaps {
+  color: var(--muted);
+}
+
+.trend__spikes {
+  margin-top: 12px;
+  padding-top: 10px;
+  border-top: 1px dashed var(--border);
+}
+
+.trend__spike {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 2px 0;
+  font-size: var(--fs-xs);
+}
+
+/* 真实数据趋势线。
+   注意：类名刻意不叫 .spark —— 项目里 .spark 被 ui-snapshot 的反装饰探针
+   当作"AI 味假图表"计数，这里画的是真实采样，必须区分开。 */
+
+.trendline {
+  display: block;
+  width: 100%;
+  height: 42px;
+}
+
+.trendline__line {
+  stroke: var(--accent);
+}
+
+.trendline__axis {
+  stroke: var(--border);
+}
+
+.trendline__threshold {
+  stroke: var(--amber);
+}
+
+.trendline__gap {
+  stroke: var(--muted-2);
+}
+
+.trendline__dot,
+.trendline__last {
+  fill: var(--accent);
+}
+
+.trendline-empty {
+  display: flex;
+  align-items: center;
+  height: 42px;
+}
+
+.trendline-stat {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.trendline-stat__head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.trendline-stat__label {
+  font-size: var(--fs-xs);
+  color: var(--muted);
+}
+
+.trendline-stat__last {
+  font-size: var(--fs-xs);
+  color: var(--text-soft);
+}
+
+.trendline-stat__last b {
+  font-family: var(--mono);
+  font-weight: 600;
+}
+
+.trendline-stat__nums {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  flex-wrap: wrap;
+  font-size: var(--fs-xs);
+  color: var(--muted-2);
+}
+
+.trendline-stat__nums b {
+  font-family: var(--mono);
+  font-weight: 600;
+  color: var(--text-soft);
+}
+
+.trendline-stat.is-warn .trendline-stat__last b {
+  color: var(--amber);
+}

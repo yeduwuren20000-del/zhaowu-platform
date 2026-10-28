@@ -1,0 +1,88 @@
+:root {
+  color-scheme: dark;
+
+  /* ============ 层级：只靠中性明度，不靠颜色 ============ */
+  /* 底色压得更暗、面板提得更亮，卡片才能从背景里"浮"起来；
+     原先 bg(#101215) 与 surface(#16191d) 只差 6 级明度，层次几乎看不出来。 */
+  --bg: #0c0e11;
+  --surface: #171a1f;
+  --surface-2: #1d2127;
+  --surface-3: #252b32;
+  --surface-inset: #0a0c0e;
+  --hover: rgba(255, 255, 255, 0.05);
+  --selected: rgba(255, 255, 255, 0.08);
+
+  /* 兼容旧变量名 */
+  --panel: var(--surface);
+  --panel-2: var(--surface-2);
+  --panel-3: var(--surface-3);
+
+  --border: #2b313a;
+  --border-strong: #3d4650;
+  --border-soft: #20252b;
+
+  /* ============ 文字 ============ */
+  --text: #e8eaed;
+  --text-soft: #c3c9d1;
+  --muted: #8b939e;
+  --muted-2: #697079;
+
+  /* ============ 颜色：蓝仅用于主操作 / 链接 / 选中 ============ */
+  --accent: #4c8dfd;
+  --accent-hover: #6ba1ff;
+  --accent-soft: rgba(76, 141, 253, 0.13);
+  --accent-border: rgba(76, 141, 253, 0.42);
+  --link: #7fb0ff;
+
+  /* 状态色 */
+  --green: #46b45c;
+  --green-soft: rgba(70, 180, 92, 0.12);
+  --red: #e0555c;
+  --red-soft: rgba(224, 85, 92, 0.12);
+  --amber: #cf9a2c;
+  --amber-soft: rgba(207, 154, 44, 0.12);
+  --blue: #4c8dfd;
+  --blue-soft: rgba(76, 141, 253, 0.12);
+  /* 语义分类色，压低饱和度，避免彩虹感 */
+  --purple: #8f92a8;
+  --purple-soft: rgba(143, 146, 168, 0.12);
+  --cyan: #63a4b4;
+  --cyan-soft: rgba(99, 164, 180, 0.12);
+
+  /* ============ 圆角：主面板 8–10，控件 6–8 ============ */
+  --radius-xs: 4px;
+  --radius-sm: 6px;
+  --radius: 8px;
+  --radius-lg: 10px;
+  --radius-xl: 10px;
+
+  /* ============ 阴影：面板不用阴影，只给浮层 ============ */
+  --shadow: 0 16px 40px -22px rgba(0, 0, 0, 0.85), 0 2px 8px -4px rgba(0, 0, 0, 0.6);
+  --shadow-soft: none;
+
+  /* ============ 尺度 ============ */
+  --fs-xs: 12px;
+  --fs-sm: 13px;
+  --fs-md: 13.5px;
+  --fs-lg: 14.5px;
+  --fs-xl: 16px;
+  --sp-1: 4px;
+  --sp-2: 8px;
+  --sp-3: 12px;
+  --sp-4: 16px;
+  --sp-5: 20px;
+  --sp-6: 28px;
+  --row-h: 34px;
+  --ctrl-h: 28px;
+  --ctrl-h-sm: 24px;
+
+  --sidebar-width: 208px;
+
+  /* ============ 动效：120–180ms，只做颜色/背景/微位移 ============ */
+  --t: 140ms;
+  --t-slow: 180ms;
+  --ease: cubic-bezier(0.2, 0.7, 0.3, 1);
+
+  --font: 'Segoe UI', 'Microsoft YaHei UI', 'Microsoft YaHei', system-ui, -apple-system, sans-serif;
+  --mono: 'JetBrains Mono', 'Cascadia Mono', Consolas, 'Courier New', monospace;
+}

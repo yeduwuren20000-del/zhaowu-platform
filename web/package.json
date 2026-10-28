@@ -1,0 +1,26 @@
+{
+  "name": "dev-server-manager-web",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Workbench UI (React 18 + Vite 5). 前端工作台界面。",
+  "license": "MIT",
+  "scripts": {
+    "dev": "vite",
+    "build": "node _rollup.mjs dist",
+    "build:vite": "vite build",
+    "preview": "vite preview"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "dependencies": {
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "react-router-dom": "^6.26.2"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-react": "^4.3.2",
+    "vite": "^5.4.8"
+  }
+}

@@ -1,0 +1,63 @@
+name: 问题反馈 / Bug report
+description: 功能不对、报错、状态判断错误
+labels: ['bug']
+body:
+  - type: markdown
+    attributes:
+      value: |
+        提交前请先跑一次 `npm test`，并确认你的 Node 版本 ≥ 18。
+        **请不要贴真实 IP、用户名、密码、Token、私钥内容或 `data/` 下的真实文件。**
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: 发生了什么
+      description: 说清操作路径（哪个页面、点了什么）与实际结果、期望结果
+      placeholder: |
+        在「本地项目」页点启动，按钮转圈后提示成功，但端口一直是"已停止"。
+        期望：状态变成"运行中"并显示真实 PID。
+    validations:
+      required: true
+  - type: textarea
+    id: facts
+    attributes:
+      label: 相关事实（脱敏后填写）
+      description: 项目类型 / 启动命令 / 端口 / 进程名 / 是否 Docker 部署
+      placeholder: |
+        类型：Vite；启动命令：npm run dev；端口：5173；进程：node.exe
+      value: |-
+        类型：
+        启动命令：
+        端口：
+        进程名：
+    validations:
+      required: true
+  - type: textarea
+    id: logs
+    attributes:
+      label: 日志或控制台输出
+      description: 粘贴 `data/logs/<项目ID>.log` 尾部或浏览器控制台报错（F12），会自动渲染成代码块
+      render: shell
+  - type: input
+    id: os
+    attributes:
+      label: 操作系统
+      placeholder: Windows 11 23H2 / Ubuntu 22.04
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: 版本与 Node
+      description: 看「设置」页，或执行 `node -v`
+      placeholder: v0.1.0 / Node v22.11.0
+    validations:
+      required: true
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: 提交前确认
+      options:
+        - label: 我已跑过 `npm test` 并附上结果
+          required: true
+        - label: 我确认内容里没有真实凭据、公网 IP 或个人目录
+          required: true

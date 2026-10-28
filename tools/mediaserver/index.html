@@ -1,0 +1,1261 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>本地私人影院</title>
+<style>
+  :root{
+    --bg:#f4f5f7; --card:#fff; --border:#e3e6ea; --text:#1d2129; --muted:#767f8c;
+    --accent:#185fa5; --accent2:#378add; --hover:#eef4fb; --ok:#12805c; --warn:#b26a00;
+    --shadow:0 2px 8px rgba(16,24,40,.06);
+  }
+  *{box-sizing:border-box;}
+  body{margin:0;font-family:-apple-system,"Segoe UI","Microsoft YaHei",sans-serif;background:var(--bg);color:var(--text);}
+  header{position:sticky;top:0;z-index:20;background:#fff;border-bottom:1px solid var(--border);padding:11px 22px;display:flex;align-items:center;gap:16px;flex-wrap:wrap;}
+  .logo{font-size:16px;font-weight:600;white-space:nowrap;}
+  .logo span{color:var(--accent);}
+  .tabs{display:flex;gap:4px;}
+  .tab{padding:7px 14px;border-radius:8px;cursor:pointer;font-size:14px;color:var(--muted);border:1px solid transparent;white-space:nowrap;}
+  .tab:hover{background:#f7f8fa;}
+  .tab.active{background:var(--hover);color:var(--accent);border-color:var(--border);font-weight:500;}
+  .tab .badge{display:inline-block;min-width:17px;height:17px;line-height:17px;text-align:center;font-size:11px;border-radius:9px;background:var(--accent);color:#fff;margin-left:5px;padding:0 4px;}
+  .spacer{flex:1;}
+  .search{padding:8px 12px;border:1px solid var(--border);border-radius:8px;font-size:14px;outline:none;width:210px;background:#fafbfc;}
+  .search:focus{border-color:var(--accent2);background:#fff;}
+  main{padding:20px 22px 60px;max-width:1680px;margin:0 auto;}
+
+  .sect-title{display:flex;align-items:center;gap:10px;font-size:15px;font-weight:600;margin:0 0 12px;}
+  .sect-title .n{font-size:12px;font-weight:400;color:var(--muted);}
+
+  /* ---------- 继续观看 ---------- */
+  #cont-wrap{margin-bottom:26px;}
+  #cont-row{display:flex;gap:12px;overflow-x:auto;padding-bottom:6px;scrollbar-width:thin;}
+  .ccard{flex:0 0 268px;background:var(--card);border:1px solid var(--border);border-radius:10px;overflow:hidden;cursor:pointer;transition:.15s;position:relative;}
+  .ccard:hover{border-color:var(--accent2);box-shadow:var(--shadow);transform:translateY(-1px);}
+  .ccard img{width:100%;aspect-ratio:16/9;object-fit:cover;display:block;background:#eaecef;}
+  .ccard .info{padding:9px 11px 11px;}
+  .ccard .nm{font-size:13px;font-weight:500;line-height:1.35;overflow:hidden;display:-webkit-box;-webkit-line-clamp:1;-webkit-box-orient:vertical;}
+  .ccard .sub{font-size:11.5px;color:var(--muted);margin-top:4px;display:flex;justify-content:space-between;}
+  .pbar{height:3px;background:#e8ebef;border-radius:2px;overflow:hidden;}
+  .pbar i{display:block;height:100%;background:var(--accent2);border-radius:2px;}
+  .ccard .pbar{position:absolute;left:0;right:0;bottom:0;border-radius:0;}
+
+  /* ---------- 海报墙 ---------- */
+  .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(192px,1fr));gap:16px;}
+  .card{background:var(--card);border:1px solid var(--border);border-radius:10px;overflow:hidden;cursor:pointer;transition:.15s;position:relative;}
+  .card:hover{border-color:var(--accent2);box-shadow:var(--shadow);transform:translateY(-2px);}
+  .thumb-wrap{position:relative;background:linear-gradient(135deg,#e9eef5,#dde5ee);}
+  .thumb-wrap img{width:100%;aspect-ratio:16/9;object-fit:cover;display:block;}
+  .thumb-wrap .ph{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:26px;color:#a8b3c1;}
+  .thumb-wrap img.fail{opacity:0;}
+  .card .body{padding:9px 11px 11px;}
+  .card .nm{font-size:13px;font-weight:500;line-height:1.35;overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;word-break:break-all;}
+  .card .meta{font-size:11.5px;color:var(--muted);margin-top:5px;}
+  .card .pbar{margin-top:7px;}
+  .card .pbar.hide{display:none;}
+  .hd{position:absolute;top:7px;left:7px;background:rgba(24,95,165,.92);color:#fff;font-size:10.5px;font-weight:600;padding:2px 6px;border-radius:4px;letter-spacing:.4px;}
+  .acts{position:absolute;inset:auto 0 0 0;display:flex;gap:6px;padding:8px;background:linear-gradient(transparent,rgba(0,0,0,.62));opacity:0;transition:.15s;}
+  .card:hover .acts,.ccard:hover .acts{opacity:1;}
+  .acts button{flex:1;border:none;border-radius:6px;padding:6px 0;font-size:12px;cursor:pointer;background:rgba(255,255,255,.92);color:#1d2129;font-weight:500;}
+  .acts button:hover{background:#fff;}
+  .acts button.fix{background:rgba(255,255,255,.92);}
+  .acts button.fix:hover{background:#fff;color:var(--accent);}
+
+  .empty{color:var(--muted);text-align:center;padding:70px 20px;font-size:14px;line-height:2;}
+  .empty code{background:#e9ecf0;padding:2px 6px;border-radius:4px;}
+
+  /* ---------- 播放器 ---------- */
+  .viewer{display:none;position:fixed;inset:0;background:#000;z-index:100;flex-direction:column;}
+  .viewer.show{display:flex;}
+  .vbar{display:flex;align-items:center;gap:14px;padding:9px 16px;background:#111;color:#eee;font-size:13.5px;}
+  .vbar button{background:#222;color:#eee;border:1px solid #333;padding:6px 14px;border-radius:8px;cursor:pointer;font-size:13px;}
+  .vbar button:hover{background:#2c2c2c;}
+  .vbar .t{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:#ccc;}
+  .vbar .rr{color:#8b929c;font-size:12px;}
+  .qwrap{position:relative;}
+  .qwrap button{min-width:86px;}
+  .qmenu{display:none;position:absolute;right:0;top:calc(100% + 8px);min-width:186px;background:#1a1c20;
+    border:1px solid #303339;border-radius:10px;padding:6px;box-shadow:0 14px 34px rgba(0,0,0,.6);z-index:120;}
+  .qmenu.show{display:block;}
+  .qmenu .it{display:flex;justify-content:space-between;gap:12px;align-items:baseline;
+    padding:7px 10px;border-radius:7px;cursor:pointer;font-size:12.5px;color:#d8dbe0;white-space:nowrap;}
+  .qmenu .it:hover{background:#262a30;}
+  .qmenu .it.on{background:#2b3038;color:#fff;box-shadow:inset 0 0 0 1px #3a4048;}
+  .qmenu .it b{font-weight:400;color:#8b929c;font-size:11.5px;}
+  .qmenu .hh{padding:5px 10px 4px;font-size:11px;color:#6f757d;letter-spacing:.04em;}
+  video{flex:1;width:100%;background:#000;outline:none;}
+  .toast{position:fixed;left:50%;bottom:42px;transform:translateX(-50%) translateY(12px);background:rgba(20,22,26,.9);color:#fff;font-size:13px;padding:9px 16px;border-radius:8px;opacity:0;transition:.25s;z-index:200;pointer-events:none;}
+  .toast.show{opacity:1;transform:translateX(-50%) translateY(0);}
+
+  /* ---------- 在线播放 ---------- */
+  .online{max-width:820px;}
+  .online .row{display:flex;gap:10px;flex-wrap:wrap;}
+  .online input{flex:1;min-width:240px;padding:11px 13px;border:1px solid var(--border);border-radius:8px;font-size:14px;outline:none;}
+  .online input:focus{border-color:var(--accent2);}
+  .online button{padding:11px 20px;background:var(--accent);color:#fff;border:none;border-radius:8px;cursor:pointer;font-size:14px;font-weight:500;}
+  .online button:hover{background:var(--accent2);}
+  .hint{margin-top:14px;font-size:12px;color:var(--muted);line-height:1.9;}
+  .status{margin-top:10px;font-size:13px;color:var(--muted);}
+
+  /* ---------- 修复任务 ---------- */
+  .job{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:13px 15px;margin-bottom:11px;}
+  .job .top{display:flex;align-items:center;gap:10px;font-size:13.5px;}
+  .job .top .nm{font-weight:500;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+  .job .top .st{font-size:12px;padding:2px 8px;border-radius:5px;background:var(--hover);color:var(--accent);white-space:nowrap;}
+  .job .top .st.done{background:#e6f4ee;color:var(--ok);}
+  .job .top .st.err{background:#fdeaea;color:#b42318;}
+  .job .top .st.cancel{background:#f2f3f5;color:var(--muted);}
+  .job .pbar{margin-top:9px;height:5px;}
+  .job .pbar i{background:linear-gradient(90deg,var(--accent),var(--accent2));transition:width .4s;}
+  .job .sub{margin-top:7px;font-size:11.5px;color:var(--muted);display:flex;gap:12px;flex-wrap:wrap;}
+  .job .log{margin-top:8px;font-size:11px;color:#8b929c;font-family:Consolas,monospace;white-space:pre-wrap;max-height:44px;overflow:hidden;}
+  .job button{margin-left:6px;background:#fff;border:1px solid var(--border);border-radius:6px;padding:4px 10px;font-size:12px;cursor:pointer;color:var(--muted);}
+  .job button:hover{border-color:#d9534f;color:#d9534f;}
+
+  /* ---------- 修复弹窗 ---------- */
+  .modal{display:none;position:fixed;inset:0;background:rgba(16,20,28,.45);z-index:150;align-items:center;justify-content:center;padding:20px;}
+  .modal.show{display:flex;}
+  .mbox{background:#fff;border-radius:12px;width:100%;max-width:470px;padding:20px 22px 18px;box-shadow:0 12px 40px rgba(16,24,40,.2);}
+  .mbox h3{margin:0 0 4px;font-size:16px;}
+  .mbox .fn{font-size:12.5px;color:var(--muted);word-break:break-all;margin-bottom:16px;}
+  .fld{margin-bottom:14px;}
+  .fld label{display:block;font-size:12.5px;color:var(--muted);margin-bottom:6px;}
+  .opts{display:flex;gap:8px;flex-wrap:wrap;}
+  .opt{padding:8px 13px;border:1px solid var(--border);border-radius:8px;font-size:13px;cursor:pointer;background:#fafbfc;color:#3c4450;}
+  .opt:hover{border-color:#c9d3e0;}
+  .opt.on{border-color:var(--accent2);background:var(--hover);color:var(--accent);font-weight:500;}
+  .opt small{display:block;font-size:10.5px;color:var(--muted);font-weight:400;margin-top:2px;}
+  .opt.on small{color:var(--accent);}
+  .note{font-size:11.5px;color:var(--warn);background:#fff8e8;border:1px solid #ffe4b3;border-radius:7px;padding:8px 10px;line-height:1.7;margin-bottom:14px;}
+  .mfoot{display:flex;justify-content:flex-end;gap:9px;}
+  .mfoot button{padding:9px 18px;border-radius:8px;font-size:13.5px;cursor:pointer;border:1px solid var(--border);background:#fff;color:#3c4450;}
+  .mfoot button.primary{background:var(--accent);color:#fff;border-color:var(--accent);font-weight:500;}
+  .mfoot button.primary:hover{background:var(--accent2);}
+  .mfoot button:disabled{opacity:.5;cursor:not-allowed;}
+
+  /* ---------- 聚合搜索 ---------- */
+  .aggbar{display:flex;gap:9px;flex-wrap:wrap;align-items:center;margin-bottom:14px;}
+  .aggbar input{flex:1;min-width:220px;padding:11px 13px;border:1px solid var(--border);border-radius:8px;font-size:14px;outline:none;background:#fff;}
+  .aggbar input:focus{border-color:var(--accent2);}
+  .aggbar button{padding:11px 20px;background:var(--accent);color:#fff;border:none;border-radius:8px;cursor:pointer;font-size:14px;font-weight:500;}
+  .aggbar button:hover{background:var(--accent2);}
+  .aggbar button.ghost{background:#fff;color:#3c4450;border:1px solid var(--border);font-weight:400;}
+  .aggbar button.ghost:hover{border-color:var(--accent2);color:var(--accent);background:var(--hover);}
+  .srcbox{background:#fff;border:1px solid var(--border);border-radius:10px;padding:13px 15px;margin-bottom:16px;}
+  .srcbox .shead{display:flex;align-items:center;gap:9px;font-size:13.5px;font-weight:500;cursor:pointer;}
+  .srcbox .shead .cnt{font-size:12px;font-weight:400;color:var(--muted);}
+  .srcbox .bd{margin-top:12px;display:none;}
+  .srcbox.open .bd{display:block;}
+  .srow{display:flex;align-items:center;gap:10px;padding:7px 0;border-bottom:1px dashed #eef0f3;font-size:13px;}
+  .srow:last-child{border-bottom:none;}
+  .srow .nm{width:130px;flex:none;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+  .srow .u{flex:1;color:var(--muted);font-size:12px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+  .srow .tag{font-size:11px;padding:1px 6px;border-radius:4px;background:#eef4fb;color:var(--accent);}
+  .srow .tag.bad{background:#fdeaea;color:#b42318;}
+  .srow .tag.ok{background:#e6f4ee;color:var(--ok);}
+  .srow button{background:#fff;border:1px solid var(--border);border-radius:6px;padding:3px 9px;font-size:12px;cursor:pointer;color:var(--muted);}
+  .srow button:hover{border-color:var(--accent2);color:var(--accent);}
+  .srow button.del:hover{border-color:#d9534f;color:#d9534f;}
+  .sadd{display:flex;gap:8px;flex-wrap:wrap;margin-top:11px;padding-top:11px;border-top:1px solid #f0f2f5;}
+  .sadd input{padding:8px 11px;border:1px solid var(--border);border-radius:7px;font-size:13px;outline:none;}
+  .sadd input:focus{border-color:var(--accent2);}
+  .sadd input.n1{width:130px;}
+  .sadd input.n2{flex:1;min-width:220px;}
+  .sadd button{padding:8px 16px;background:#fff;border:1px solid var(--accent);color:var(--accent);border-radius:7px;font-size:13px;cursor:pointer;font-weight:500;}
+  .sadd button:hover{background:var(--hover);}
+  .agginfo{font-size:12.5px;color:var(--muted);margin-bottom:12px;line-height:1.8;}
+  .agginfo b{color:var(--text);font-weight:600;}
+  .agginfo .errc{color:#b42318;}
+  #agg-grid .card .nm{-webkit-line-clamp:2;}
+  .eps{display:grid;grid-template-columns:repeat(auto-fill,minmax(88px,1fr));gap:7px;max-height:330px;overflow:auto;}
+  .eps button{padding:8px 6px;border:1px solid var(--border);background:#fafbfc;border-radius:7px;font-size:12.5px;cursor:pointer;color:#3c4450;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+  .eps button:hover{border-color:var(--accent2);background:var(--hover);color:var(--accent);}
+
+  /* 下载入库（yt-dlp） */
+  .dlbar{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:14px 15px;margin-bottom:16px;}
+  .dlbar textarea{width:100%;min-height:76px;box-sizing:border-box;resize:vertical;padding:10px 12px;
+    border:1px solid var(--border);border-radius:8px;font-size:13px;font-family:inherit;line-height:1.7;outline:none;}
+  .dlbar textarea:focus{border-color:var(--accent2);}
+  .dlrow{display:flex;gap:9px;align-items:center;flex-wrap:wrap;margin-top:11px;}
+  .dlbar .opt{padding:6px 12px;font-size:12.5px;}
+  .dlrow .chk{display:flex;align-items:center;gap:6px;font-size:12.5px;color:var(--muted);cursor:pointer;}
+  .dlrow #dl-go{padding:8px 18px;background:var(--accent);color:#fff;border:none;border-radius:7px;
+    font-size:13px;cursor:pointer;font-weight:500;}
+  .dlrow #dl-go:hover{background:var(--accent2);}
+  .dlrow #dl-go:disabled{opacity:.55;cursor:not-allowed;}
+  .dlrow .ghost{background:#fff;border:1px solid var(--border);border-radius:7px;padding:8px 13px;
+    font-size:12.5px;color:var(--muted);cursor:pointer;}
+  .dlrow .ghost:hover{border-color:var(--accent2);color:var(--accent);}
+  .dlmeta{font-size:11.5px;color:var(--muted);margin-top:9px;line-height:1.8;}
+  .dlmeta code{background:#eef1f4;padding:1px 5px;border-radius:4px;}
+
+  /* 源清单导入（LibreTV / TVBOX） */
+  .impbox{margin-top:12px;border:1px solid var(--border);border-radius:9px;background:#fafbfc;padding:0 12px;}
+  .impbox[open]{padding-bottom:12px;}
+  .impbox summary{cursor:pointer;font-size:12.5px;color:var(--accent);padding:10px 0;list-style:none;}
+  .impbox summary::-webkit-details-marker{display:none;}
+  .impbox summary:before{content:"＋ ";font-weight:600;}
+  .impbox[open] summary:before{content:"－ ";}
+  .impbox textarea{width:100%;min-height:86px;box-sizing:border-box;padding:9px 11px;border:1px solid var(--border);
+    border-radius:7px;font-size:12px;font-family:Consolas,monospace;line-height:1.6;outline:none;resize:vertical;}
+  .impbox textarea:focus{border-color:var(--accent2);}
+  .impbox .improw{display:flex;gap:8px;margin-top:9px;flex-wrap:wrap;}
+  .impbox .improw input{flex:1;min-width:200px;padding:8px 11px;border:1px solid var(--border);border-radius:7px;
+    font-size:12.5px;outline:none;}
+  .impbox .improw button{padding:8px 14px;border:1px solid var(--accent);background:#fff;color:var(--accent);
+    border-radius:7px;font-size:12.5px;cursor:pointer;}
+  .impbox .improw button:disabled{opacity:.55;cursor:not-allowed;}
+  .impbox .cand{max-height:230px;overflow:auto;margin-top:9px;border-top:1px dashed #e8ebef;padding-top:8px;}
+  .impbox .cand .ci{display:flex;align-items:center;gap:8px;font-size:12.5px;padding:4px 0;}
+  .impbox .cand .ci .nm{width:130px;flex:none;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+  .impbox .cand .ci .u{flex:1;color:var(--muted);font-size:11.5px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+  .impbox .cand .ci .have{font-size:11px;color:var(--muted);background:#eef0f3;border-radius:4px;padding:1px 6px;flex:none;}
+</style>
+</head>
+<body>
+<header>
+  <div class="logo">本地<span>私人影院</span></div>
+  <div class="tabs">
+    <div class="tab active" data-tab="lib">片库</div>
+    <div class="tab" data-tab="agg">聚合搜索</div>
+    <div class="tab" data-tab="dl">下载入库<span class="badge" id="dlbadge" style="display:none">0</span></div>
+    <div class="tab" data-tab="online">在线播放</div>
+    <div class="tab" data-tab="jobs">修复任务<span class="badge" id="jbadge" style="display:none">0</span></div>
+  </div>
+  <div class="spacer"></div>
+  <input class="search" id="q" placeholder="搜索片名…" />
+</header>
+
+<main>
+  <!-- 片库 -->
+  <section id="lib">
+    <div id="cont-wrap" style="display:none">
+      <div class="sect-title">继续观看 <span class="n" id="cont-n"></span></div>
+      <div id="cont-row"></div>
+    </div>
+    <div class="sect-title">全部影片 <span class="n" id="all-n"></span></div>
+    <div class="grid" id="grid"></div>
+    <div class="empty" id="empty" style="display:none"></div>
+  </section>
+
+  <!-- 聚合搜索 -->
+  <section id="agg" style="display:none">
+    <div class="srcbox" id="srcbox">
+      <div class="shead" id="src-toggle">
+        <span>采集源管理</span>
+        <span class="cnt" id="src-cnt"></span>
+        <span class="spacer"></span>
+        <span style="font-size:12px;color:var(--muted)">展开 / 收起</span>
+      </div>
+      <div class="bd">
+        <div id="src-list"></div>
+        <div class="sadd">
+          <input class="n1" id="s-name" placeholder="源名称（如：某站）" />
+          <input class="n2" id="s-api" placeholder="接口地址，形如 https://xxx.com/api.php/provide/vod" />
+          <button id="s-add">测试并添加</button>
+        </div>
+        <div class="hint" style="margin-top:9px">
+          只支持 Apple CMS V10 风格接口（<code>?ac=videolist&amp;wd=关键词</code>）。
+          本工具不预置任何源，源由你自己填写；内容合法性由对应站点负责。
+        </div>
+
+        <details class="impbox" id="impbox">
+          <summary>从 LibreTV / TVBOX 配置批量导入源</summary>
+          <div style="font-size:11.5px;color:var(--muted);line-height:1.8;margin-bottom:8px">
+            支持粘贴 <b>LibreTV-SourceList JSON</b>（<code>{"sources":[...]}</code>）、
+            <b>TVBOX 配置</b>（<code>{"sites":[...]}</code>，<code>type:3</code> 的 Spider 会跳过）、
+            或每行一个接口地址；也可以只填订阅地址由服务端去拉。
+          </div>
+          <textarea id="imp-text" placeholder='例如：{"sources":[{"name":"示例源","url":"https://xxx.com/api.php/provide/vod"}]}'></textarea>
+          <div class="improw">
+            <input id="imp-url" placeholder="订阅地址（可留空，留空则解析上面粘贴的内容）" />
+            <button id="imp-parse">解析</button>
+            <button id="imp-commit" style="display:none">导入选中</button>
+          </div>
+          <div id="imp-res"></div>
+        </details>
+      </div>
+    </div>
+
+    <div class="aggbar">
+      <input id="agg-q" placeholder="搜索片名（多个源并行搜，约 1~3 秒）…" />
+      <button id="agg-go">搜索</button>
+      <button class="ghost" id="agg-clear">清空</button>
+    </div>
+    <div class="agginfo" id="agg-info"></div>
+    <div class="grid" id="agg-grid"></div>
+    <div class="empty" id="agg-empty" style="display:none">还没有采集源。展开上方「采集源管理」填一个接口地址，就能全网搜索了。</div>
+  </section>
+
+  <!-- 下载入库（yt-dlp） -->
+  <section id="dl" style="display:none">
+    <div class="dlbar">
+      <textarea id="dl-urls" placeholder="粘贴公开视频链接，一行一个（B站 / YouTube / 公开课程 / 直链 mp4…）"></textarea>
+      <div class="dlrow">
+        <div class="opts" id="dl-q">
+          <div class="opt on" data-v="best">最高画质</div>
+          <div class="opt" data-v="1080">≤1080p</div>
+          <div class="opt" data-v="720">≤720p</div>
+          <div class="opt" data-v="480">≤480p</div>
+          <div class="opt" data-v="audio">仅音频 MP3</div>
+        </div>
+        <label class="chk"><input type="checkbox" id="dl-pl" /> 整个合集 / 播放列表</label>
+        <button id="dl-go">开始下载</button>
+        <button class="ghost" id="dl-clear" style="display:none">清空已完成</button>
+      </div>
+      <div class="dlmeta" id="dl-meta"></div>
+    </div>
+    <div id="dllist"></div>
+    <div class="empty" id="dl-empty">还没有下载任务。粘链接 → 开始下载，成品直接进片库，「片库」刷新就能看。</div>
+  </section>
+
+  <!-- 在线播放 -->
+  <section id="online" style="display:none">
+    <div class="online">
+      <div class="row">
+        <input id="url" type="url" placeholder="粘贴视频直链 / m3u8 地址…" />
+        <button id="load">播放</button>
+      </div>
+      <div class="status" id="ostatus"></div>
+      <div class="hint">
+        支持 mp4 / webm 直链，以及 .m3u8（HLS）。这里只播放你提供的地址，不内置任何第三方解析。
+      </div>
+    </div>
+  </section>
+
+  <!-- 修复任务 -->
+  <section id="jobs" style="display:none">
+    <div class="sect-title">AI 修复任务 <span class="n">后台跑，可以关页面去看别的</span>
+      <span class="spacer"></span>
+      <button id="jclear" style="display:none;background:#fff;border:1px solid var(--border);border-radius:7px;padding:5px 11px;font-size:12px;color:var(--muted);cursor:pointer;">清空已完成</button>
+    </div>
+    <div id="joblist"></div>
+    <div class="empty" id="jempty">还没有任务。到「片库」里把鼠标移到影片上，点 <b>⚡ AI 修复</b> 就能开始。</div>
+  </section>
+</main>
+
+<!-- 播放器 -->
+<div class="viewer" id="viewer">
+  <div class="vbar">
+    <button id="back">← 返回</button>
+    <div class="t" id="vtitle"></div>
+    <div class="rr" id="vres"></div>
+    <div class="qwrap" id="qwrap" style="display:none">
+      <button id="qbtn" title="播放画质">画质</button>
+      <div class="qmenu" id="qmenu"></div>
+    </div>
+  </div>
+  <video id="v" controls autoplay playsinline></video>
+</div>
+
+<!-- 修复弹窗 -->
+<div class="modal" id="modal">
+  <div class="mbox">
+    <h3>AI 高清修复</h3>
+    <div class="fn" id="m-fn"></div>
+
+    <div class="fld">
+      <label>放大倍数</label>
+      <div class="opts" id="m-scale">
+        <div class="opt on" data-v="2">2x<small>日常首选</small></div>
+        <div class="opt" data-v="3">3x<small>更慢</small></div>
+        <div class="opt" data-v="4">4x<small>最慢</small></div>
+      </div>
+    </div>
+
+    <div class="fld">
+      <label>模型</label>
+      <div class="opts" id="m-model">
+        <div class="opt on" data-v="realesr-animevideov3">通用 / 快速<small>动画、字幕、真人</small></div>
+        <div class="opt" data-v="realesrgan-x4plus">实拍 / 高质<small>固定 4x，明显更慢</small></div>
+      </div>
+    </div>
+
+    <div class="fld">
+      <label>处理范围</label>
+      <div class="opts" id="m-limit">
+        <div class="opt" data-v="60">先试 60 秒<small>推荐：看效果</small></div>
+        <div class="opt" data-v="300">前 5 分钟<small>中等</small></div>
+        <div class="opt on" data-v="0">整片<small>几小时起</small></div>
+      </div>
+    </div>
+
+    <div class="note" id="m-note">
+      这是逐帧 AI 计算，速度约每秒几帧：1 分钟片子约 1–3 分钟，45 分钟整片要几小时。
+      建议先用「先试 60 秒」确认效果，满意再整片跑。成品会自动进入片库的「_已修复」分类。
+    </div>
+
+    <div class="mfoot">
+      <button id="m-cancel">取消</button>
+      <button id="m-ok" class="primary">开始修复</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal" id="epmodal">
+  <div class="mbox">
+    <h3 id="ep-title">选集</h3>
+    <div class="fn" id="ep-sub"></div>
+    <div class="eps" id="ep-list"></div>
+    <div class="mfoot"><button id="ep-close">关闭</button></div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script src="/static/hls.min.js" onerror="var s=document.createElement('script');s.src='https://cdn.jsdelivr.net/npm/hls.js@1.5.13/dist/hls.min.js';document.head.appendChild(s)"></script>
+<script>
+const $ = s => document.querySelector(s);
+const grid = $('#grid'), empty = $('#empty'), contRow = $('#cont-row'), contWrap = $('#cont-wrap');
+let allItems = [], contItems = [], curHls = null, curItem = null;
+let jobTimer = null;
+const LAST = { rel: null, lastSave: 0 };
+
+function fmtTime(ts){ const d=new Date(ts*1000); return d.toLocaleDateString(); }
+function esc(s){ return String(s == null ? '' : s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+function fmtDur(s){
+  s = Math.max(0, Math.round(s||0));
+  const h = Math.floor(s/3600), m = Math.floor(s%3600/60), ss = s%60;
+  return h ? `${h}:${String(m).padStart(2,'0')}:${String(ss).padStart(2,'0')}` : `${m}:${String(ss).padStart(2,'0')}`;
+}
+function toast(msg, ms=2200){
+  const t = $('#toast'); t.textContent = msg; t.classList.add('show');
+  clearTimeout(t._h); t._h = setTimeout(()=>t.classList.remove('show'), ms);
+}
+function thumbUrl(rel){ return '/api/thumb?f=' + encodeURIComponent(rel); }
+
+/* ---------------- 渲染 ---------------- */
+function mkThumb(it){
+  const w = document.createElement('div');
+  w.className = 'thumb-wrap';
+  w.innerHTML = `<div class="ph">▶</div><img loading="lazy" src="${thumbUrl(it.rel)}" alt=""
+    onerror="this.classList.add('fail')">`;
+  if(it.upscaled){
+    const b = document.createElement('div'); b.className='hd'; b.textContent='HD 已修复'; w.appendChild(b);
+  }
+  return w;
+}
+
+function mkActs(it){
+  const a = document.createElement('div');
+  a.className = 'acts';
+  const b1 = document.createElement('button'); b1.textContent = '▶ 播放';
+  b1.onclick = e => { e.stopPropagation(); playLocal(it); };
+  const b2 = document.createElement('button'); b2.className='fix'; b2.textContent = '⚡ AI 修复';
+  b2.onclick = e => { e.stopPropagation(); openFix(it); };
+  a.append(b1, b2);
+  return a;
+}
+
+function renderContinue(){
+  if(!contItems.length){ contWrap.style.display='none'; return; }
+  contWrap.style.display = 'block';
+  $('#cont-n').textContent = `${contItems.length} 部未看完`;
+  contRow.innerHTML = '';
+  for(const c of contItems){
+    const it = allItems.find(x => x.rel === c.rel) || c;
+    const d = document.createElement('div');
+    d.className = 'ccard';
+    d.innerHTML = `<img loading="lazy" src="${thumbUrl(c.rel)}" alt="" onerror="this.style.visibility='hidden'">
+      <div class="info"><div class="nm">${c.name}</div>
+      <div class="sub"><span>剩 ${fmtDur(c.left)}</span><span>${fmtDur(c.d)}</span></div></div>
+      <div class="pbar"><i style="width:${Math.min(100, c.t/c.d*100)}%"></i></div>`;
+    d.appendChild(mkActs(it));
+    d.onclick = () => playLocal(it);
+    contRow.appendChild(d);
+  }
+}
+
+function render(){
+  const k = $('#q').value.trim().toLowerCase();
+  const list = k ? allItems.filter(i => i.name.toLowerCase().includes(k)) : allItems;
+  grid.innerHTML = '';
+  $('#all-n').textContent = `${allItems.length} 部`;
+  if(!list.length){
+    empty.style.display = 'block';
+    empty.innerHTML = k ? '没找到匹配的影片。'
+      : '片库是空的。<br>把视频文件放进 <code>library</code> 文件夹，这里就会自动出现。<br>（也可以在视频旁放一张同名 <code>.jpg</code> 当作自定义封面）';
+    return;
+  }
+  empty.style.display = 'none';
+  for(const it of list){
+    const c = document.createElement('div');
+    c.className = 'card';
+    c.appendChild(mkThumb(it));
+    const body = document.createElement('div');
+    body.className = 'body';
+    const pct = (it.pos && it.dur) ? Math.min(100, it.pos/it.dur*100) : 0;
+    body.innerHTML = `<div class="nm">${it.stem}</div>
+      <div class="meta">${it.size_h} · ${fmtTime(it.mtime)}</div>
+      <div class="pbar ${pct?'':'hide'}"><i style="width:${pct}%"></i></div>`;
+    c.appendChild(body);
+    c.appendChild(mkActs(it));
+    c.onclick = () => playLocal(it);
+    grid.appendChild(c);
+  }
+}
+
+async function loadList(){
+  try{
+    const r = await fetch('/api/list'); const d = await r.json();
+    allItems = d.items || [];
+    contItems = d.continue || [];
+    if(!d.upscaler){
+      document.querySelectorAll('.fix').forEach(b => { b.disabled = true; b.title = '未找到 upscaler'; });
+    }
+    renderContinue(); render();
+  }catch(e){
+    empty.style.display='block'; empty.textContent='读取片库失败：'+e;
+  }
+}
+
+/* ---------------- 播放 + 进度记忆 ---------------- */
+function destroyHls(){
+  if(curHls){ try{ curHls.destroy(); }catch(e){} curHls = null; }
+  $('#qwrap').style.display = 'none';
+  $('#qmenu').classList.remove('show');
+}
+
+function openViewer(title){
+  $('#vtitle').textContent = title;
+  $('#vres').textContent = '';
+  $('#viewer').classList.add('show');
+}
+
+/* ---------------- 画质控制（默认最高档） ---------------- */
+/* mode: 'max' = 永远最高码率 | 'auto' = 自适应 | 数字 = 目标高度(如 720) */
+const QPREF = (() => {
+  try{ const o = JSON.parse(localStorage.getItem('qpref') || '{}');
+       return (o.mode === 'auto' || o.mode === 'max' || typeof o.mode === 'number') ? o : {mode:'max'}; }
+  catch(e){ return {mode:'max'}; }
+})();
+function saveQ(){ try{ localStorage.setItem('qpref', JSON.stringify(QPREF)); }catch(e){} }
+
+function maxLevelIdx(){
+  const ls = curHls && curHls.levels; if(!ls || !ls.length) return 0;
+  let bi = 0;
+  for(let i=1;i<ls.length;i++){
+    const a = ls[i], b = ls[bi];
+    if((a.bitrate||0) > (b.bitrate||0) || ((a.bitrate||0) === (b.bitrate||0) && (a.height||0) > (b.height||0))) bi = i;
+  }
+  return bi;
+}
+function levelsByHeight(){
+  if(!curHls || !curHls.levels) return [];
+  const best = new Map();   // height -> level index（同高度取码率最高的那档）
+  curHls.levels.forEach((l, i) => {
+    const h = l.height || 0;
+    if(!best.has(h) || (curHls.levels[best.get(h)].bitrate || 0) < (l.bitrate || 0)) best.set(h, i);
+  });
+  return [...best.entries()].map(([h, i]) => ({h, i, l: curHls.levels[i]})).sort((a, b) => b.h - a.h);
+}
+function resText(l){ return l && l.height ? l.height + 'p' : (l && l.width ? l.width + 'p' : '未知'); }
+function mbps(l){ return l && l.bitrate ? (l.bitrate / 1e6).toFixed(2) + ' Mbps' : ''; }
+
+function applyQ(silent){
+  if(!curHls || !curHls.levels || !curHls.levels.length) return;
+  curHls.capLevelToPlayerSize = false;      // 不因窗口小就自动降档
+  if(QPREF.mode === 'auto'){
+    curHls.currentLevel = -1;               // 交回 ABR 自适应
+  }else if(typeof QPREF.mode === 'number'){
+    const hs = levelsByHeight();
+    const cand = hs.find(x => x.h <= QPREF.mode) || hs[hs.length - 1];
+    curHls.currentLevel = cand ? cand.i : maxLevelIdx();
+  }else{
+    curHls.currentLevel = maxLevelIdx();    // 锁定最高码率那档
+  }
+  syncQ();
+  if(!silent){
+    const l = curHls.levels[curHls.currentLevel];
+    toast(QPREF.mode === 'auto' ? '画质：自动（按网速自适应）'
+      : (QPREF.mode === 'max' ? `画质已锁定最高：${resText(l)}` : `画质：${resText(l)}`));
+  }
+}
+
+function syncQ(){
+  if(!curHls || !curHls.levels || !curHls.levels.length){ $('#qwrap').style.display = 'none'; return; }
+  $('#qwrap').style.display = '';
+  const btn = $('#qbtn');
+  if(QPREF.mode === 'auto') btn.textContent = '画质 自动';
+  else{
+    const idx = curHls.currentLevel >= 0 ? curHls.currentLevel : curHls.levels.length - 1;
+    btn.textContent = '画质 ' + resText(curHls.levels[idx]);
+  }
+  // 菜单勾选态
+  const hs = levelsByHeight();
+  document.querySelectorAll('#qmenu .it').forEach(el => {
+    const k = el.dataset.k;
+    const on = (k === 'auto' && QPREF.mode === 'auto')
+            || (k === 'max' && QPREF.mode === 'max')
+            || (typeof QPREF.mode === 'number' && k === 'h' + el.dataset.h && +el.dataset.h === QPREF.mode);
+    el.classList.toggle('on', !!on);
+  });
+  const cur = curHls.currentLevel >= 0 ? curHls.levels[curHls.currentLevel] : null;
+  if(cur) $('#vres').textContent = `${cur.width || '?'}×${cur.height || '?'} · ${mbps(cur)}`;
+}
+
+function buildQMenu(){
+  const box = $('#qmenu');
+  box.innerHTML = '';
+  if(!curHls || !curHls.levels || curHls.levels.length < 2){ $('#qwrap').style.display = 'none'; return; }
+  const hs = levelsByHeight();
+  const top = curHls.levels[maxLevelIdx()];
+
+  const head = document.createElement('div');
+  head.className = 'hh';
+  head.textContent = `本片共 ${hs.length} 档画质`;
+  box.appendChild(head);
+
+  const add = (k, txt, sub, h) => {
+    const el = document.createElement('div');
+    el.className = 'it';
+    el.dataset.k = k;
+    if(h != null) el.dataset.h = h;
+    el.innerHTML = `<span>${txt}</span><b>${sub || ''}</b>`;
+    el.onclick = (ev) => {
+      ev.stopPropagation();
+      QPREF.mode = (k === 'auto') ? 'auto' : (k === 'max' ? 'max' : +h);
+      saveQ(); applyQ(false); buildQMenu(); syncQ();
+      box.classList.remove('show');
+    };
+    box.appendChild(el);
+  };
+
+  add('auto', '自动（自适应）', '按网速');
+  add('max', '最高画质', resText(top));
+  hs.forEach(x => add('h' + x.h, resText(x.l), mbps(x.l), x.h));
+  syncQ();
+}
+
+$('#qbtn').onclick = (ev) => {
+  ev.stopPropagation();
+  const m = $('#qmenu');
+  if(m.classList.contains('show')){ m.classList.remove('show'); return; }
+  buildQMenu(); m.classList.add('show');
+};
+document.addEventListener('click', () => $('#qmenu').classList.remove('show'));
+
+function playSrc(src, title, isHls, item){
+  destroyHls();
+  const v = $('#v');
+  curItem = item || null;
+  LAST.lastSave = 0;
+  openViewer(title);
+  const startAt = (item && item.pos > 3) ? item.pos : 0;
+
+  if(isHls || /\.m3u8(\?|$)/i.test(src)){
+    if(window.Hls && Hls.isSupported()){
+      curHls = new Hls({
+        enableWorker: true,
+        capLevelToPlayerSize: false,   // 窗口小也保持高码率，不被自动降到 360p
+        startLevel: -1,                // 先让 ABR 起播，MANIFEST 到了立刻按偏好锁定
+        maxBufferLength: 60,
+      });
+      curHls.loadSource(src);
+      curHls.attachMedia(v);
+      curHls.on(Hls.Events.MANIFEST_PARSED, () => {
+        buildQMenu();
+        if(QPREF.mode === 'max'){
+          // 先用 ABR 拿到首帧（起播快），第一个分片缓冲好立刻锁最高档
+          const lockMax = () => {
+            try{ curHls.off(Hls.Events.FRAG_BUFFERED, lockMax); }catch(e){}
+            applyQ(true);
+          };
+          curHls.on(Hls.Events.FRAG_BUFFERED, lockMax);
+          setTimeout(lockMax, 6000);   // 兜底：6 秒还没首帧也直接上最高档
+        }else{
+          applyQ(true);
+        }
+        v.play().catch(()=>{});
+      });
+      curHls.on(Hls.Events.LEVEL_SWITCHED, () => syncQ());
+      curHls.on(Hls.Events.ERROR, (e,data)=>{ if(data.fatal){
+        $('#vtitle').textContent = title + ' — 播放失败(源不可用/需鉴权)';
+      }});
+      return;
+    }
+  }
+  $('#qwrap').style.display = 'none';
+  v.src = src;
+  if(startAt){
+    v.addEventListener('loadedmetadata', function once(){
+      v.removeEventListener('loadedmetadata', once);
+      if(startAt < (v.duration||1e9) - 5){ v.currentTime = startAt; toast('已从 ' + fmtDur(startAt) + ' 继续播放'); }
+    });
+  }
+  v.play().catch(()=>{});
+}
+
+function playLocal(it){
+  if(!it) return;
+  playSrc('/api/stream?f=' + encodeURIComponent(it.rel), it.stem, false, it);
+}
+
+function saveProgress(final){
+  const v = $('#v');
+  if(!curItem) return;
+  const dur = v.duration;
+  if(!isFinite(dur) || dur <= 0) return;
+  const t = final ? dur : v.currentTime;
+  fetch('/api/progress', {
+    method:'POST', headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({ rel: curItem.rel, t: t, d: dur })
+  }).catch(()=>{});
+}
+
+const v = $('#v');
+v.addEventListener('timeupdate', () => {
+  if(!curItem) return;
+  if(Math.abs(v.currentTime - LAST.lastSave) > 5){ LAST.lastSave = v.currentTime; saveProgress(false); }
+});
+v.addEventListener('pause', () => { if(curItem && v.currentTime>0) saveProgress(false); });
+v.addEventListener('ended', () => { saveProgress(true); setTimeout(loadList, 300); });
+v.addEventListener('loadedmetadata', () => {
+  if(curHls) return;   // HLS 的分辨率/码率由画质模块同步
+  if(v.videoWidth) $('#vres').textContent = `${v.videoWidth}×${v.videoHeight}`;
+});
+
+function closeViewer(){
+  if(curItem && v.currentTime > 0) saveProgress(false);
+  destroyHls(); v.pause(); v.removeAttribute('src'); v.load();
+  curItem = null;
+  $('#viewer').classList.remove('show');
+  loadList();
+}
+$('#back').onclick = closeViewer;
+document.addEventListener('keydown', e => {
+  if(e.key === 'Escape'){
+    if($('#qmenu').classList.contains('show')) $('#qmenu').classList.remove('show');
+    else if($('#epmodal').classList.contains('show')) $('#epmodal').classList.remove('show');
+    else if($('#modal').classList.contains('show')) closeModal();
+    else if($('#viewer').classList.contains('show')) closeViewer();
+  }
+});
+
+/* ---------------- 修复 ---------------- */
+let fixItem = null;
+const FIX = { scale: 2, model: 'realesr-animevideov3', limit: 0 };
+try{ Object.assign(FIX, JSON.parse(localStorage.getItem('fixcfg')||'{}')); }catch(e){}
+
+function syncFixUI(){
+  document.querySelectorAll('#m-scale .opt').forEach(o => o.classList.toggle('on', +o.dataset.v === FIX.scale));
+  document.querySelectorAll('#m-model .opt').forEach(o => o.classList.toggle('on', o.dataset.v === FIX.model));
+  document.querySelectorAll('#m-limit .opt').forEach(o => o.classList.toggle('on', +o.dataset.v === FIX.limit));
+  const x4 = FIX.model !== 'realesr-animevideov3';
+  $('#m-scale').style.opacity = x4 ? .45 : 1;
+  $('#m-scale').style.pointerEvents = x4 ? 'none' : 'auto';
+}
+
+function openFix(it){
+  if(!it) return;
+  fixItem = it;
+  $('#m-fn').textContent = it.name + ' · ' + it.size_h;
+  syncFixUI();
+  $('#modal').classList.add('show');
+}
+function closeModal(){ $('#modal').classList.remove('show'); fixItem = null; }
+
+document.querySelectorAll('#m-scale .opt').forEach(o => o.onclick = () => { FIX.scale = +o.dataset.v; syncFixUI(); });
+document.querySelectorAll('#m-model .opt').forEach(o => o.onclick = () => {
+  FIX.model = o.dataset.v; if(FIX.model !== 'realesr-animevideov3') FIX.scale = 4; syncFixUI();
+});
+document.querySelectorAll('#m-limit .opt').forEach(o => o.onclick = () => { FIX.limit = +o.dataset.v; syncFixUI(); });
+$('#m-cancel').onclick = closeModal;
+
+$('#m-ok').onclick = async () => {
+  if(!fixItem) return;
+  const btn = $('#m-ok'); btn.disabled = true; btn.textContent = '提交中…';
+  try{
+    localStorage.setItem('fixcfg', JSON.stringify(FIX));
+    const r = await fetch('/api/upscale', {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({ rel: fixItem.rel, scale: FIX.scale, model: FIX.model, limit: FIX.limit })
+    });
+    const d = await r.json();
+    if(!r.ok || d.error){ toast('提交失败：' + (d.error || r.status)); return; }
+    closeModal();
+    switchTab('jobs');
+    toast('已开始修复，可在「修复任务」看进度');
+    pollJobs();
+  }catch(e){ toast('提交失败：' + e); }
+  finally{ btn.disabled = false; btn.textContent = '开始修复'; }
+};
+
+/* ---------------- 任务列表 ---------------- */
+const STAGE_TXT = { start:'准备中', extract:'抽帧', upscale:'AI 超分', encode:'重编码', done:'完成', error:'失败' };
+const shortPath = s => (s||'').replace(/^.*?[\\/]library[\\/]/, '').slice(0, 110);
+
+function renderJobs(d){
+  const list = d.jobs || [];
+  const box = $('#joblist');
+  const running = list.filter(j => j.status === 'running').length;
+  const badge = $('#jbadge');
+  if(running){ badge.style.display='inline-block'; badge.textContent = running; }
+  else badge.style.display = 'none';
+  $('#jclear').style.display = list.some(j => j.status !== 'running') ? 'inline-block' : 'none';
+
+  box.innerHTML = '';
+  $('#jempty').style.display = list.length ? 'none' : 'block';
+  if(!list.length) return;
+
+  for(const j of list){
+    const el = document.createElement('div');
+    el.className = 'job';
+    const cls = j.status === 'done' ? 'done' : (j.status === 'error' ? 'err' : (j.status === 'cancelled' ? 'cancel' : ''));
+    let stage = j.status === 'running' ? (STAGE_TXT[j.progress.stage] || '处理中') : STAGE_TXT[j.status] || j.status;
+    const elapsed = Date.now()/1000 - j.created;
+    let sub = '';
+    if(j.status === 'running'){
+      const p = j.progress;
+      let eta = '';
+      if(p.percent > 3 && elapsed > 15){
+        const remain = elapsed / (p.percent/100) - elapsed;
+        eta = remain > 60 ? `　预计还剩约 ${Math.round(remain/60)} 分钟` : `　预计还剩 ${Math.round(remain)} 秒`;
+      }
+      sub = (p.total ? `帧 ${p.current} / ${p.total}　` : '') +
+            `已用 ${elapsed > 60 ? (elapsed/60).toFixed(1)+' 分钟' : Math.round(elapsed)+' 秒'}` + eta;
+    }else if(j.status === 'done'){
+      sub = `输出：${j.out_rel}　${j.out_size_h || ''}`;
+    }else if(j.status === 'error'){
+      sub = j.error || '处理失败';
+    }else{
+      sub = '已停止';
+    }
+    const showLog = (j.status === 'running' || j.status === 'error') && j.log && j.log.length;
+    el.innerHTML = `<div class="top">
+        <div class="nm">${j.name} <span style="color:#8b929c;font-weight:400">· ${j.scale}x</span></div>
+        <div class="st ${cls}">${stage}</div>
+        ${j.status === 'running' ? `<button data-cancel="${j.id}">停止</button>` : ''}
+      </div>
+      <div class="pbar"><i style="width:${j.status==='done'?100:j.progress.percent}%"></i></div>
+      <div class="sub">${sub}</div>
+      ${showLog ? `<div class="log">${j.log.slice(-2).map(shortPath).join('\n')}</div>` : ''}`;
+    box.appendChild(el);
+  }
+  box.querySelectorAll('[data-cancel]').forEach(b => b.onclick = async () => {
+    b.disabled = true; b.textContent = '停止中…';
+    await fetch('/api/jobs/cancel', {method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({id: b.dataset.cancel})}).catch(()=>{});
+    pollJobs();
+  });
+}
+
+async function pollJobs(){
+  clearTimeout(jobTimer);
+  try{
+    const r = await fetch('/api/jobs'); const d = await r.json();
+    const before = (window.__doneCount || 0);
+    renderJobs(d);
+    const done = (d.jobs||[]).filter(j => j.status === 'done').length;
+    if(done > before){ window.__doneCount = done; loadList(); }
+    if((d.jobs||[]).some(j => j.status === 'running')) jobTimer = setTimeout(pollJobs, 1500);
+  }catch(e){ /* 服务未起 */ }
+}
+
+$('#jclear').onclick = async () => {
+  await fetch('/api/jobs/clear', {method:'POST'}).catch(()=>{});
+  pollJobs();
+};
+
+/* ---------------- 聚合搜索 ---------------- */
+let srcList = [];
+
+function b64u(s){
+  return btoa(String.fromCharCode(...new TextEncoder().encode(s)))
+    .replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,'');
+}
+function proxyOf(u){ return '/api/agg/proxy?u=' + b64u(u); }
+
+async function loadSources(expand){
+  try{
+    const r = await fetch('/api/sources'); const d = await r.json();
+    srcList = d.sources || [];
+  }catch(e){ srcList = []; }
+  renderSources();
+  if(!srcList.length && expand) $('#srcbox').classList.add('open');
+}
+
+function renderSources(){
+  const on = srcList.filter(s => s.enabled).length;
+  $('#src-cnt').textContent = srcList.length ? `（${on}/${srcList.length} 启用）` : '（还没配源）';
+  const box = $('#src-list');
+  box.innerHTML = '';
+  if(!srcList.length){
+    box.innerHTML = `<div style="font-size:12.5px;color:var(--muted);padding:2px 0 6px">空。在下面填一个接口地址即可。</div>`;
+  }
+  srcList.forEach((s, i) => {
+    const row = document.createElement('div');
+    row.className = 'srow';
+    let host = '';
+    try{ host = new URL(s.api).host; }catch(e){ host = s.api; }
+    row.innerHTML = `<input type="checkbox" ${s.enabled?'checked':''} data-i="${i}" />
+      <span class="nm" title="${s.name}">${s.name}</span>
+      <span class="u" title="${s.api}">${host}</span>
+      <span class="tag" data-tag="${i}" style="display:none"></span>
+      <button data-test="${i}">测试</button>
+      <button class="del" data-del="${i}">删除</button>`;
+    box.appendChild(row);
+  });
+  box.querySelectorAll('[data-i]').forEach(cb => cb.onchange = () => {
+    srcList[+cb.dataset.i].enabled = cb.checked; saveSources();
+  });
+  box.querySelectorAll('[data-del]').forEach(b => b.onclick = () => {
+    srcList.splice(+b.dataset.del, 1); saveSources();
+  });
+  box.querySelectorAll('[data-test]').forEach(b => b.onclick = async () => {
+    const i = +b.dataset.test, tag = box.querySelector(`[data-tag="${i}"]`);
+    tag.style.display = 'inline-block'; tag.className = 'tag'; tag.textContent = '测试中…';
+    b.disabled = true;
+    try{
+      const r = await fetch('/api/sources/test', {method:'POST', headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({api: srcList[i].api})});
+      const d = await r.json();
+      tag.className = 'tag ' + (d.ok ? 'ok' : 'bad');
+      tag.textContent = d.ok ? `OK ${d.items} 条 ${d.ms}ms` : `失败 ${d.ms}ms`;
+      if(!d.ok) tag.title = d.error || '';
+    }catch(e){ tag.className = 'tag bad'; tag.textContent = '失败'; }
+    b.disabled = false;
+  });
+}
+
+async function saveSources(){
+  try{
+    const r = await fetch('/api/sources', {method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({sources: srcList})});
+    const d = await r.json();
+    if(!r.ok){ toast('保存失败：' + (d.error||r.status)); return; }
+    srcList = d.sources || srcList;
+    renderSources();
+  }catch(e){ toast('保存失败：' + e); }
+}
+
+$('#src-toggle').onclick = () => $('#srcbox').classList.toggle('open');
+
+$('#s-add').onclick = async () => {
+  const name = $('#s-name').value.trim();
+  const api = $('#s-api').value.trim();
+  if(!api){ toast('先填接口地址'); return; }
+  const btn = $('#s-add'); btn.disabled = true; btn.textContent = '测试中…';
+  try{
+    const r = await fetch('/api/sources/test', {method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({api})});
+    const d = await r.json();
+    if(!d.ok){ toast('这个接口连不通：' + (d.error||'').slice(0,80), 4200); return; }
+    srcList.push({name: name || api.replace(/^https?:\/\//,'').split('/')[0], api, enabled: true});
+    await saveSources();
+    $('#s-name').value = ''; $('#s-api').value = '';
+    toast(`已添加，测试返回 ${d.items} 条（${d.ms}ms）`);
+  }catch(e){ toast('添加失败：' + e); }
+  finally{ btn.disabled = false; btn.textContent = '测试并添加'; }
+};
+
+async function aggSearch(){
+  const wd = $('#agg-q').value.trim();
+  if(!wd){ $('#agg-q').focus(); return; }
+  const btn = $('#agg-go'); btn.disabled = true; btn.textContent = '搜索中…';
+  $('#agg-info').textContent = `正在并行搜索 ${srcList.filter(s=>s.enabled).length} 个源…`;
+  $('#agg-grid').innerHTML = '';
+  $('#agg-empty').style.display = 'none';
+  const t0 = performance.now();
+  try{
+    const r = await fetch('/api/agg/search?wd=' + encodeURIComponent(wd));
+    const d = await r.json();
+    if(!r.ok){ $('#agg-info').innerHTML = `<span class="errc">${d.error || '搜索失败'}</span>`; return; }
+    const sec = ((performance.now()-t0)/1000).toFixed(1);
+    let info = `<b>${d.items.length}</b> 个结果 · ${d.sources} 个源 · 耗时 ${sec}s`;
+    if(d.errors && d.errors.length) info += ` · <span class="errc">${d.errors.length} 个源失效</span>`;
+    $('#agg-info').innerHTML = info;
+    renderAgg(d.items);
+  }catch(e){
+    $('#agg-info').innerHTML = `<span class="errc">搜索失败：${e}</span>`;
+  }finally{ btn.disabled = false; btn.textContent = '搜索'; }
+}
+
+function renderAgg(items){
+  const g = $('#agg-grid');
+  g.innerHTML = '';
+  if(!items || !items.length){
+    $('#agg-empty').style.display = 'block';
+    $('#agg-empty').textContent = '没搜到。可能源的库里没有，或者源已失效。';
+    return;
+  }
+  $('#agg-empty').style.display = 'none';
+  for(const it of items){
+    const c = document.createElement('div');
+    c.className = 'card';
+    const w = document.createElement('div');
+    w.className = 'thumb-wrap';
+    w.innerHTML = `<div class="ph">▶</div>` +
+      (it.pic ? `<img loading="lazy" src="${proxyOf(it.pic)}" alt="" onerror="this.classList.add('fail')">` : '');
+    c.appendChild(w);
+    const body = document.createElement('div');
+    body.className = 'body';
+    const meta = [it.year, it.type, it.note].filter(Boolean).join(' · ');
+    body.innerHTML = `<div class="nm">${it.name}</div>
+      <div class="meta">${meta || '&nbsp;'}</div>
+      <div class="meta" style="color:#8b929c">${it.from.length} 个源可用</div>`;
+    c.appendChild(body);
+    const a = document.createElement('div');
+    a.className = 'acts';
+    const b = document.createElement('button');
+    b.textContent = '▶ 选集播放';
+    b.onclick = e => { e.stopPropagation(); openEpisodes(it); };
+    a.appendChild(b);
+    c.appendChild(a);
+    c.onclick = () => openEpisodes(it);
+    g.appendChild(c);
+  }
+}
+
+async function openEpisodes(it){
+  const from = it.from || [];
+  if(!from.length){ toast('这个结果没有可用源'); return; }
+  $('#ep-title').textContent = it.name;
+  $('#ep-sub').textContent = '正在取剧集…';
+  $('#ep-list').innerHTML = '';
+  $('#epmodal').classList.add('show');
+  for(const f of from){
+    try{
+      const r = await fetch(`/api/agg/detail?s=${encodeURIComponent(f.source)}&id=${encodeURIComponent(f.id)}`);
+      const d = await r.json();
+      if(!r.ok || !d.episodes || !d.episodes.length) continue;
+      $('#ep-sub').textContent = `${d.name} · 来源：${f.source} · ${d.episodes.length} 集`;
+      const box = $('#ep-list');
+      box.innerHTML = '';
+      d.episodes.forEach(ep => {
+        const b = document.createElement('button');
+        b.textContent = ep.name;
+        b.title = ep.url;
+        b.onclick = () => {
+          $('#epmodal').classList.remove('show');
+          playSrc(proxyOf(ep.url), `${it.name} · ${ep.name}`, /\.m3u8|m3u/i.test(ep.url), null);
+        };
+        box.appendChild(b);
+      });
+      return;
+    }catch(e){ /* 换下一个源 */ }
+  }
+  $('#ep-sub').innerHTML = '<span style="color:#b42318">所有源都没取到剧集（源可能失效）</span>';
+}
+
+$('#ep-close').onclick = () => $('#epmodal').classList.remove('show');
+$('#agg-go').onclick = aggSearch;
+$('#agg-q').addEventListener('keydown', e => { if(e.key === 'Enter') aggSearch(); });
+$('#agg-clear').onclick = () => {
+  $('#agg-q').value = ''; $('#agg-grid').innerHTML = '';
+  $('#agg-info').textContent = ''; $('#agg-empty').style.display = 'none';
+};
+
+/* ---------------- 下载入库（yt-dlp） ---------------- */
+const DL_STAGE = { queue:'排队中', probe:'解析链接', download:'下载中', merge:'合并音视频', audio:'提取音频', done:'完成' };
+const DLQ_TXT = { best:'最高画质', '2160':'≤2160p', '1080':'≤1080p', '720':'≤720p', '480':'≤480p', audio:'仅音频' };
+let dlPref = 'best';
+try{ const q = localStorage.getItem('dlq'); if(DLQ_TXT[q]) dlPref = q; }catch(e){}
+let dlTimer = null;
+
+function syncDLQ(){
+  document.querySelectorAll('#dl-q .opt').forEach(o => o.classList.toggle('on', o.dataset.v === dlPref));
+}
+syncDLQ();
+document.querySelectorAll('#dl-q .opt').forEach(o => o.onclick = () => {
+  dlPref = o.dataset.v; try{ localStorage.setItem('dlq', dlPref); }catch(e){}
+  syncDLQ();
+});
+
+async function dlSubmit(){
+  const raw = $('#dl-urls').value.trim();
+  if(!raw){ $('#dl-urls').focus(); toast('先粘贴视频链接'); return; }
+  const btn = $('#dl-go'); btn.disabled = true; btn.textContent = '提交中…';
+  try{
+    const r = await fetch('/api/dl', {method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({urls: raw, quality: dlPref, playlist: $('#dl-pl').checked})});
+    const d = await r.json();
+    if(!r.ok){ toast(d.error || '提交失败', 4200); return; }
+    $('#dl-urls').value = '';
+    toast(`已加入 ${d.count} 个下载任务`);
+    pollDL();
+  }catch(e){ toast('提交失败：' + e); }
+  finally{ btn.disabled = false; btn.textContent = '开始下载'; }
+}
+
+function renderDL(d){
+  const list = d.jobs || [];
+  const running = list.filter(j => j.status === 'running').length;
+  const badge = $('#dlbadge');
+  if(running){ badge.style.display = 'inline-block'; badge.textContent = running; }
+  else badge.style.display = 'none';
+  $('#dl-clear').style.display = list.some(j => j.status !== 'running') ? 'inline-block' : 'none';
+  $('#dl-meta').innerHTML = d.ok
+    ? `yt-dlp ${esc(d.version || '')}　ffmpeg ${d.ffmpeg ? '就绪' : '<b style="color:#b42318">缺失</b>'}　成品保存到 <code>library/</code>`
+    : '没检测到 yt-dlp：在 upscaler 的 venv 里执行 <code>pip install yt-dlp</code>';
+
+  const box = $('#dllist');
+  box.innerHTML = '';
+  $('#dl-empty').style.display = list.length ? 'none' : 'block';
+  if(!list.length) return;
+
+  for(const j of list){
+    const el = document.createElement('div');
+    el.className = 'job';
+    const cls = j.status === 'done' ? 'done' : (j.status === 'error' ? 'err' : (j.status === 'cancelled' ? 'cancel' : ''));
+    const stage = j.status === 'running' ? (DL_STAGE[j.stage] || '处理中')
+      : (j.status === 'done' ? '完成' : j.status === 'error' ? '失败' : '已停止');
+    let sub = '';
+    if(j.status === 'running'){
+      const bits = [];
+      if(j.size) bits.push('总大小 ' + j.size);
+      if(j.speed && j.speed !== 'NA') bits.push(j.speed);
+      if(j.eta && j.eta !== 'NA') bits.push('剩余 ' + j.eta);
+      bits.push('已用 ' + Math.round(Date.now()/1000 - j.created) + ' 秒');
+      sub = bits.join('　');
+    }else if(j.status === 'done'){
+      sub = (j.out_rel ? '已入库：' + j.out_rel : (j.note || '已完成')) + (j.size_h ? '　' + j.size_h : '');
+    }else if(j.status === 'error'){
+      sub = j.error || '下载失败';
+    }else sub = '已停止';
+
+    el.innerHTML = `<div class="top">
+        <div class="nm">${esc(j.title || j.url)} <span style="color:#8b929c;font-weight:400">· ${DLQ_TXT[j.quality] || ''}</span></div>
+        <div class="st ${cls}">${stage}</div>
+        ${j.status === 'running' ? `<button data-dlcancel="${j.id}">停止</button>` : ''}
+      </div>
+      <div class="pbar"><i style="width:${j.status === 'done' ? 100 : (j.percent || 0)}%"></i></div>
+      <div class="sub">${esc(sub)}</div>
+      ${(j.log && j.log.length && (j.status === 'error' || j.status === 'running'))
+        ? `<div class="log">${esc(j.log.slice(-2).join('\n'))}</div>` : ''}`;
+    box.appendChild(el);
+  }
+  box.querySelectorAll('[data-dlcancel]').forEach(b => b.onclick = async () => {
+    b.disabled = true; b.textContent = '停止中…';
+    await fetch('/api/dl/cancel', {method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({id: b.dataset.dlcancel})}).catch(()=>{});
+    pollDL();
+  });
+}
+
+async function pollDL(){
+  clearTimeout(dlTimer);
+  try{
+    const r = await fetch('/api/dl'); const d = await r.json();
+    const before = window.__dlDone || 0;
+    renderDL(d);
+    const done = (d.jobs || []).filter(j => j.status === 'done').length;
+    if(done > before){ window.__dlDone = done; loadList(); }
+    if((d.jobs || []).some(j => j.status === 'running')) dlTimer = setTimeout(pollDL, 2000);
+  }catch(e){ /* 服务未起 */ }
+}
+
+$('#dl-go').onclick = dlSubmit;
+$('#dl-clear').onclick = async () => {
+  await fetch('/api/dl/clear', {method:'POST'}).catch(()=>{});
+  window.__dlDone = 0;
+  pollDL();
+};
+
+/* ---------------- LibreTV / TVBOX 源清单导入 ---------------- */
+let impCands = [];
+const FMT_TXT = { libretv:'LibreTV 源清单', tvbox:'TVBOX 配置', list:'接口地址列表' };
+
+$('#imp-parse').onclick = async () => {
+  const text = $('#imp-text').value.trim();
+  const url = $('#imp-url').value.trim();
+  if(!text && !url){ toast('粘贴配置内容，或填一个订阅地址'); return; }
+  const btn = $('#imp-parse'); btn.disabled = true; btn.textContent = '解析中…';
+  try{
+    const r = await fetch('/api/sources/import', {method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({text, url})});
+    const d = await r.json();
+    if(!r.ok){
+      $('#imp-res').innerHTML = `<div style="font-size:12px;color:#b42318;margin-top:8px">${esc(d.error || '解析失败')}</div>`;
+      $('#imp-commit').style.display = 'none';
+      return;
+    }
+    impCands = d.candidates || [];
+    renderImp(d);
+  }catch(e){ toast('解析失败：' + e); }
+  finally{ btn.disabled = false; btn.textContent = '解析'; }
+};
+
+function renderImp(d){
+  const box = $('#imp-res');
+  const fmt = FMT_TXT[d.format] || d.format || '';
+  if(!impCands.length){
+    box.innerHTML = `<div style="font-size:12px;color:var(--muted);margin-top:8px">识别为 <b>${esc(fmt)}</b>，但没找到可用的 Apple CMS 接口`
+      + (d.live ? `（${d.live} 条直播源暂不支持）` : '')
+      + (d.skipped ? `，跳过 ${d.skipped} 条` : '') + '。</div>';
+    $('#imp-commit').style.display = 'none';
+    return;
+  }
+  const news = impCands.filter(c => !c.exists).length;
+  let h = `<div style="font-size:12px;color:var(--muted);margin-top:8px;line-height:1.9">
+    识别为 <b>${esc(fmt)}</b>：共 ${impCands.length} 个接口，其中 <b>${news}</b> 个是新的`
+    + (d.live ? `；另有 ${d.live} 条直播源暂不支持` : '')
+    + (d.skipped ? `；跳过 ${d.skipped} 条（Spider 类型或地址不合法）` : '') + '。</div><div class="cand">';
+  impCands.forEach((c, i) => {
+    let host = c.api; try{ host = new URL(c.api).host; }catch(e){}
+    h += `<label class="ci"><input type="checkbox" data-ci="${i}" ${c.exists ? '' : 'checked'} />
+      <span class="nm" title="${esc(c.name)}">${esc(c.name)}</span>
+      <span class="u" title="${esc(c.api)}">${esc(host)}</span>
+      ${c.exists ? '<span class="have">已存在</span>' : ''}</label>`;
+  });
+  h += '</div>';
+  box.innerHTML = h;
+  const btn = $('#imp-commit');
+  btn.style.display = 'inline-block';
+  btn.textContent = `导入选中（${news}）`;
+  box.querySelectorAll('[data-ci]').forEach(cb => cb.onchange = () => {
+    btn.textContent = `导入选中（${box.querySelectorAll('[data-ci]:checked').length}）`;
+  });
+}
+
+$('#imp-commit').onclick = async () => {
+  const picks = [...document.querySelectorAll('#imp-res [data-ci]:checked')].map(cb => impCands[+cb.dataset.ci]);
+  if(!picks.length){ toast('一个都没选'); return; }
+  const have = new Set(srcList.map(s => s.api));
+  let added = 0;
+  for(const p of picks){
+    if(!p || have.has(p.api)) continue;
+    srcList.push({name: p.name, api: p.api, enabled: true});
+    have.add(p.api); added++;
+  }
+  await saveSources();
+  $('#imp-text').value = ''; $('#imp-url').value = ''; $('#imp-res').innerHTML = '';
+  $('#imp-commit').style.display = 'none'; impCands = [];
+  toast(added ? `已导入 ${added} 个源，建议逐个点「测试」确认能通` : '没有新增（都已存在）', 3200);
+};
+
+/* ---------------- Tab / 交互 ---------------- */
+function switchTab(name){
+  document.querySelectorAll('.tab').forEach(x => x.classList.toggle('active', x.dataset.tab === name));
+  $('#lib').style.display = name === 'lib' ? 'block' : 'none';
+  $('#agg').style.display = name === 'agg' ? 'block' : 'none';
+  $('#dl').style.display = name === 'dl' ? 'block' : 'none';
+  $('#online').style.display = name === 'online' ? 'block' : 'none';
+  $('#jobs').style.display = name === 'jobs' ? 'block' : 'none';
+  if(name === 'jobs') pollJobs();
+  if(name === 'agg') loadSources(true);
+  if(name === 'dl') pollDL();
+}
+document.querySelectorAll('.tab').forEach(t => t.onclick = () => switchTab(t.dataset.tab));
+
+$('#q').oninput = () => {
+  const k = $('#q').value.trim();
+  contWrap.style.display = k ? 'none' : (contItems.length ? 'block' : 'none');
+  render();
+};
+
+$('#load').onclick = () => {
+  const u = $('#url').value.trim();
+  if(!u){ $('#ostatus').textContent = '请先粘贴地址'; return; }
+  $('#ostatus').textContent = '';
+  playSrc(u, (u.split('/').pop() || '在线播放').slice(0, 60), /\.m3u8(\?|$)/i.test(u), null);
+};
+$('#url').addEventListener('keydown', e => { if(e.key === 'Enter') $('#load').click(); });
+
+loadList();
+pollJobs();
+pollDL();
+</script>
+</body>
+</html>

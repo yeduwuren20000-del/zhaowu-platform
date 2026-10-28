@@ -1,0 +1,203 @@
+/* SSH 资源面板、端口核对、服务器内嵌标签页、汇总条 */
+
+/* ============ 汇总条 ============ */
+.ssh-strip {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  flex-wrap: wrap;
+  padding: 8px 12px;
+  border-radius: var(--radius);
+  border: 1px solid var(--border);
+  background: var(--surface-2);
+  font-size: var(--fs-sm);
+  color: var(--text-soft);
+}
+
+.ssh-strip__item {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.ssh-strip__item b {
+  color: var(--muted);
+  font-weight: 500;
+}
+
+/* ============ 资源占用条 ============ */
+.meter {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+
+.meter__head {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+}
+
+.meter__label {
+  font-size: var(--fs-sm);
+  color: var(--muted);
+}
+
+.meter__value {
+  margin-left: auto;
+  font-family: var(--mono);
+  font-size: var(--fs-sm);
+  font-weight: 600;
+  color: var(--text);
+}
+
+.meter__track {
+  display: block;
+  height: 4px;
+  border-radius: 2px;
+  background: var(--surface-3);
+  overflow: hidden;
+}
+
+.meter__fill {
+  display: block;
+  height: 100%;
+  border-radius: 2px;
+  background: var(--muted);
+  transition: width var(--t-slow) var(--ease);
+}
+
+.meter__hint {
+  font-size: var(--fs-xs);
+  color: var(--muted-2);
+  font-family: var(--mono);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* ============ 资源面板 ============ */
+.server-res {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.res-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 10px 18px;
+}
+
+.res-facts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 18px;
+  padding-top: 8px;
+  border-top: 1px solid var(--border);
+}
+
+.fact {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: var(--fs-xs);
+  color: var(--muted);
+  max-width: 100%;
+}
+
+.fact__label {
+  color: var(--muted-2);
+}
+
+.fact b {
+  color: var(--text-soft);
+  font-family: var(--mono);
+  font-weight: 500;
+  max-width: 260px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* ============ 服务器详情标签页 ============ */
+.server-tabs {
+  display: flex;
+  gap: 2px;
+  padding: 0 12px;
+  border-bottom: 1px solid var(--border);
+  background: var(--surface);
+}
+
+.server-tab {
+  border: none;
+  background: transparent;
+  color: var(--muted);
+  height: 32px;
+  padding: 0 11px;
+  cursor: pointer;
+  font-size: var(--fs-sm);
+  border-bottom: 2px solid transparent;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  transition: color var(--t) var(--ease), border-color var(--t) var(--ease);
+}
+
+.server-tab:hover {
+  color: var(--text-soft);
+}
+
+.server-tab.is-active {
+  color: var(--text);
+  border-bottom-color: var(--accent);
+}
+
+.server-tab__count {
+  font-size: var(--fs-xs);
+  padding: 0 4px;
+  border-radius: var(--radius-xs);
+  background: var(--surface-3);
+  color: var(--text-soft);
+  font-family: var(--mono);
+}
+
+.server-tab__count--warn {
+  background: var(--red-soft);
+  color: var(--red);
+}
+
+.server-tab-body {
+  padding: 12px;
+}
+
+/* 未登记端口 */
+.status-dot--unregistered {
+  background: var(--red);
+}
+
+/* ============ Docker 只读面板 ============ */
+.docker-version {
+  font-family: var(--mono);
+  font-size: var(--fs-sm);
+  color: var(--text);
+  font-weight: 600;
+}
+
+.docker-name {
+  font-family: var(--mono);
+  font-size: var(--fs-sm);
+  color: var(--text);
+}
+
+/* 一列一个端口，等宽对齐比一串彩色徽标好读 */
+.port-cell {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  font-family: var(--mono);
+  font-size: var(--fs-xs);
+  color: var(--text-soft);
+  white-space: nowrap;
+}

@@ -1,0 +1,24 @@
+{
+  "source": "<外部源目录>",
+  "syncedAt": "2026-10-25T14:38:24.550Z",
+  "files": {
+    "pan.py": "70dee7b1f12dd88b",
+    "pans/aliyun.py": "29be06d8f62868e0",
+    "pans/aria2rpc.py": "7870497d228d913a",
+    "pans/baidu.py": "2f2a00d0ad28372b",
+    "pans/base.py": "3ca4b929848530e8",
+    "pans/batch.py": "dbc0783d99204abc",
+    "pans/cache.py": "2e32d8c5f12409a2",
+    "pans/creds.py": "9f5be552f75d0ccd",
+    "pans/http.py": "7c53004bf556769c",
+    "pans/lanzou.py": "41e8dd0b9aade23c",
+    "pans/mobile.py": "c0f308708ad4ceb5",
+    "pans/pan115.py": "254b12955ebd31f5",
+    "pans/pan123.py": "22892a693f618fe8",
+    "pans/quark.py": "51e7c0d5d8fe356d",
+    "pans/tianyi.py": "0572e02f33bddb69",
+    "pans/uc.py": "7b5835b23a4c6856",
+    "pans/xunlei.py": "c349440b79159b46"
+  },
+  "stale": []
+}

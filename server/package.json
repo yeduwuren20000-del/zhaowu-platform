@@ -1,0 +1,21 @@
+{
+  "name": "dev-server-manager-server",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Local API service: real port/PID detection, process control, asset records, read-only SSH & Docker collection, lifecycle events. 本地 API：端口与进程实测、启停管理、资产记录、SSH/Docker 只读采集、生命周期事件。",
+  "main": "src/index.js",
+  "license": "MIT",
+  "scripts": {
+    "start": "node src/index.js",
+    "test": "node ../scripts/test.mjs"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "dependencies": {
+    "cors": "^2.8.5",
+    "express": "^4.19.2",
+    "ssh2": "^1.17.0"
+  }
+}

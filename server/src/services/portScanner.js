@@ -1,0 +1,169 @@
+import { PORT_SCAN_TTL_MS } from '../config.js'
+import { isWindows, runFile, runPowerShellJson } from '../utils/exec.js'
+
+/**
+ * 端口扫描：读取真实的监听表（PowerShell Get-NetTCPConnection，回退 netstat -ano）。
+ * 带 TTL 缓存，避免一次页面刷新里反复调用 PowerShell。
+ */
+
+const PS_LISTEN = `
+$rows = New-Object System.Collections.ArrayList
+foreach ($c in Get-NetTCPConnection -State Listen -ErrorAction Stop) {
+  $p = $null
+  try { $p = Get-Process -Id $c.OwningProcess -ErrorAction Stop } catch { $p = $null }
+  [void]$rows.Add([pscustomobject]@{
+    port = [int]$c.LocalPort
+    pid = [int]$c.OwningProcess
+    address = [string]$c.LocalAddress
+    processName = $(if ($p) { [string]$p.ProcessName } else { '' })
+  })
+}
+ConvertTo-Json -InputObject @($rows) -Compress
+`
+
+let cache = { at: 0, entries: [] }
+// 正在跑的那次扫描：并发请求共享同一个 Promise，避免几十个请求各 spawn 一个 PowerShell
+// （实测 40 并发读会退化到 36 秒，因为 40 个 Get-NetTCPConnection 互相抢 CPU）
+let inflight = null
+
+function isLoopbackOrAny(address) {
+  return address === '0.0.0.0' || address === '127.0.0.1' || address === '::' || address === '::1'
+}
+
+/** 同一端口可能同时有 IPv4/IPv6 两条监听记录，这里收敛成一条"有代表性的"记录 */
+function pickRepresentative(entries) {
+  const withName = entries.filter((entry) => entry.processName)
+  const pool = withName.length > 0 ? withName : entries
+  return pool.find((entry) => isLoopbackOrAny(entry.address)) || pool[0]
+}
+
+async function scanWithPowerShell() {
+  const raw = await runPowerShellJson(PS_LISTEN, { timeout: 20000 })
+  const list = Array.isArray(raw) ? raw : raw ? [raw] : []
+  return list
+    .map((row) => ({
+      port: Number(row.port),
+      pid: Number(row.pid),
+      address: String(row.address || ''),
+      processName: String(row.processName || ''),
+    }))
+    .filter((row) => Number.isInteger(row.port) && row.port > 0)
+}
+
+async function scanWithNetstat() {
+  const { stdout } = await runFile('netstat', ['-ano'], { timeout: 20000 })
+  const entries = []
+  for (const line of stdout.split(/\r?\n/)) {
+    const match = line.trim().match(/^TCP\s+(\S+):(\d+)\s+\S+\s+LISTENING\s+(\d+)$/)
+    if (!match) continue
+    entries.push({
+      address: match[1].replace(/^\[|\]$/g, ''),
+      port: Number(match[2]),
+      pid: Number(match[3]),
+      processName: '',
+    })
+  }
+  if (entries.length === 0) return entries
+  // netstat 不带进程名，用 tasklist 一次性补齐
+  try {
+    const { stdout: tasklist } = await runFile('tasklist', ['/FO', 'CSV', '/NH'], { timeout: 20000 })
+    const names = new Map()
+    for (const line of tasklist.split(/\r?\n/)) {
+      const cells = line.match(/"([^"]*)"/g)
+      if (!cells || cells.length < 2) continue
+      const name = cells[0].replace(/"/g, '')
+      const pid = Number(cells[1].replace(/"/g, ''))
+      if (Number.isInteger(pid)) names.set(pid, name.replace(/\.exe$/i, ''))
+    }
+    for (const entry of entries) entry.processName = names.get(entry.pid) || ''
+  } catch {
+    // 拿不到进程名不影响端口状态展示
+  }
+  return entries
+}
+
+async function runScan() {
+  if (!isWindows()) return []
+  let entries
+  try {
+    entries = await scanWithPowerShell()
+  } catch (error) {
+    console.warn(`[ports] Get-NetTCPConnection 不可用，改用 netstat：${error.message}`)
+    entries = await scanWithNetstat()
+  }
+  // 同端口去重（保留带进程名/通配地址的那条）
+  const grouped = new Map()
+  for (const entry of entries) {
+    const list = grouped.get(entry.port) || []
+    list.push(entry)
+    grouped.set(entry.port, list)
+  }
+  return [...grouped.values()].map(pickRepresentative).sort((a, b) => a.port - b.port)
+}
+
+async function scan({ force = false } = {}) {
+  const now = Date.now()
+  if (!force && cache.entries.length > 0 && now - cache.at < PORT_SCAN_TTL_MS) return cache.entries
+  // force 只用来"忽略旧缓存重新扫"，不代表必须自己扫：已经在跑就一起等
+  if (inflight) return inflight
+  inflight = runScan()
+    .then((entries) => {
+      cache = { at: Date.now(), entries }
+      return entries
+    })
+    .finally(() => {
+      inflight = null
+    })
+  return inflight
+}
+
+/** 端口 -> 记录 的索引 */
+async function getPortIndex(options) {
+  const entries = await scan(options)
+  return new Map(entries.map((entry) => [entry.port, entry]))
+}
+
+async function getPortOwners(port, options) {
+  if (!port) return []
+  const entries = await scan(options)
+  return entries.filter((entry) => entry.port === Number(port))
+}
+
+async function isPortListening(port, options) {
+  if (!port) return false
+  const owners = await getPortOwners(port, options)
+  return owners.length > 0
+}
+
+/** 从 from 起找第一个空闲端口（避让用）；找不到返回 null */
+async function findFreePort(from, { limit = 200, options } = {}) {
+  for (let port = Number(from); port <= Math.min(Number(from) + limit, 65535); port += 1) {
+    if (!(await isPortListening(port, options ?? { force: true }))) return port
+  }
+  return null
+}
+
+/** 轮询等待端口进入期望状态 */
+async function waitForPort(port, { want = true, timeoutMs = 15000, intervalMs = 600 } = {}) {
+  if (!port) return false
+  const deadline = Date.now() + timeoutMs
+  for (;;) {
+    const listening = await isPortListening(port)
+    if (listening === want) return true
+    if (Date.now() >= deadline) return false
+    await new Promise((resolve) => setTimeout(resolve, intervalMs))
+  }
+}
+
+export const portScanner = {
+  scan,
+  getPortIndex,
+  getPortOwners,
+  isPortListening,
+  findFreePort,
+  waitForPort,
+  invalidate() {
+    // 只清结果缓存；inflight 保持不动：正在跑的那次本身就是新鲜的，让后来的请求共享它
+    cache = { at: 0, entries: [] }
+  },
+}

@@ -1,0 +1,55 @@
+# 依赖与构建产物
+node_modules/
+web/dist/
+.npm-cache/
+
+# Python 环境与模型权重：体积大、跟机器绑死，克隆后按 README 自建
+.venv/
+**/.venv/
+__pycache__/
+*.pyc
+*.pth
+*.onnx
+
+# 本地影院：片库是自己的媒体文件，运行缓存随时可再生
+tools/mediaserver/library/
+tools/mediaserver/.cache/
+
+# 超分引擎二方包（51MB 二进制 + 模型，由 tools/upscaler/setup.bat 自动下载）
+tools/upscaler/tools/realesrgan/
+
+# 测试残留（构建/单测中途失败会留下临时产物，不是源码）
+web/.tmp-unit-*/
+web/dist-test/
+
+# 运行数据：项目/服务器/端口/事件/日志全部是本机私有状态，一律不提交
+# （首次启动会自动生成种子数据，见 server/src/store/*.js）
+data/*
+!data/secrets.example.json
+
+# 凭据：只允许提交 .example 模板
+.env
+.env.local
+*.env
+!.env.example
+secrets.json
+
+# 仓储自身的临时与备份文件
+*.tmp
+*.bak-*
+*.corrupt-*
+*.local
+# clear-demo 生成的整目录备份
+data-backup-*/
+
+# 日志与缓存
+*.log
+npm-debug.log*
+coverage/
+
+# 编辑器与系统
+.idea/
+.vscode/
+.DS_Store
+Thumbs.db
+desktop.ini

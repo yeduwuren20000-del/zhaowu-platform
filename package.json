@@ -1,0 +1,48 @@
+{
+  "name": "dev-server-manager",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "A local-first DevOps workbench for managing development projects, ports, processes, remote servers and Docker containers. 一个面向个人开发者的本地项目、端口、进程、服务器与 Docker 统一管理工作台。",
+  "keywords": [
+    "local-first",
+    "developer-tools",
+    "devops",
+    "port-manager",
+    "process-manager",
+    "service-discovery",
+    "ssh-monitoring",
+    "docker",
+    "dashboard",
+    "windows"
+  ],
+  "license": "MIT",
+  "author": "YOUR_GITHUB_NAME",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/YOUR_GITHUB_NAME/dev-server-manager.git"
+  },
+  "bugs": {
+    "url": "https://github.com/YOUR_GITHUB_NAME/dev-server-manager/issues"
+  },
+  "homepage": "https://github.com/YOUR_GITHUB_NAME/dev-server-manager#readme",
+  "scripts": {
+    "install:all": "npm install --prefix server && npm install --prefix web",
+    "dev": "node scripts/dev.mjs",
+    "build": "npm run build --prefix web",
+    "start": "node scripts/start.mjs",
+    "api": "node server/src/index.js",
+    "exec": "node scripts/exec.mjs",
+    "desktop": "node scripts/desktop.mjs",
+    "desktop:kill": "node scripts/desktop.mjs --kill",
+    "shortcut": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/install-shortcut.ps1",
+    "shortcut:remove": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/install-shortcut.ps1 -Uninstall",
+    "clear-demo": "node scripts/clear-demo.mjs",
+    "sync:panlink": "node scripts/sync-panlink.mjs",
+    "test": "node scripts/test.mjs",
+    "ui": "node server/test/ui-snapshot.mjs"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}

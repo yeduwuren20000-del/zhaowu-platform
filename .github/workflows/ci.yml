@@ -1,0 +1,87 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  test:
+    name: 安装依赖 + 全量测试（Windows）
+    runs-on: windows-latest
+    timeout-minutes: 25
+
+    strategy:
+      fail-fast: false
+      matrix:
+        node-version: ['20.x', '22.x']
+
+    env:
+      # CI 永远不开浏览器、不在启动时扫描本机端口；测试全部走 fixture 与本地假 SSH 服务器
+      DSM_NO_OPEN: '1'
+      DSM_DISCOVERY_ON_STARTUP: '0'
+
+    steps:
+      - name: 检出代码
+        uses: actions/checkout@v4
+
+      - name: 安装 Node ${{ matrix.node-version }}
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node-version }}
+          cache: npm
+          cache-dependency-path: |
+            server/package-lock.json
+            web/package-lock.json
+
+      - name: 安装前后端依赖
+        run: |
+          npm install --prefix server --no-audit --no-fund
+          npm install --prefix web --no-audit --no-fund
+
+      - name: 构建前端
+        run: npm run build --prefix web
+
+      - name: 运行全部测试（六个阶段）
+        run: npm test
+
+      - name: 空数据首次启动冒烟（模拟新克隆的用户）
+        shell: pwsh
+        run: |
+          $env:DSM_DATA_DIR = Join-Path $env:RUNNER_TEMP "dsm-empty-data"
+          $env:DSM_PORT = '8931'
+          $proc = Start-Process node -ArgumentList 'server/src/index.js' -PassThru -NoNewWindow
+          try {
+            $ready = $false
+            for ($i = 0; $i -lt 30; $i++) {
+              Start-Sleep -Milliseconds 500
+              try {
+                $health = Invoke-RestMethod 'http://127.0.0.1:8931/api/health' -TimeoutSec 3
+                if ($health.ok) { $ready = $true; break }
+              } catch { }
+            }
+            if (-not $ready) { throw '服务在 15 秒内没有就绪' }
+
+            $dash = Invoke-RestMethod 'http://127.0.0.1:8931/api/dashboard'
+            if (-not $dash.ok) { throw 'dashboard 返回 ok=false' }
+            if ($null -eq $dash.data.stats) { throw 'dashboard 缺少 stats' }
+            if (-not $dash.data.PSObject.Properties.Name.Contains('timeline')) { throw 'dashboard 缺少 timeline 字段' }
+
+            $events = Invoke-RestMethod 'http://127.0.0.1:8931/api/events?limit=5'
+            if (-not $events.ok) { throw 'events 返回 ok=false' }
+            if ($events.data.items.Count -ne 0) { throw '全新数据目录下不应有任何事件（首启只建基线）' }
+
+            $types = Invoke-RestMethod 'http://127.0.0.1:8931/api/events/types'
+            if ($types.data.Count -ne 10) { throw "事件类型应为 10 种，实际 $($types.data.Count)" }
+
+            Write-Host "冒烟通过：种子项目 $($dash.data.projects.Count) 个，事件 0 条"
+          } finally {
+            Stop-Process -Id $proc.Id -Force -ErrorAction SilentlyContinue
+          }
+
+      - name: 依赖安全审计（不阻断：dev-only 与主版本升级项见 README 安全说明）
+        continue-on-error: true
+        run: |
+          npm audit --prefix server
+          npm audit --prefix web
