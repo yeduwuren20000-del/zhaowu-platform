@@ -106,7 +106,7 @@ export function PortTable({ rows, onScan, onOpenUrl, onCopyPath, onOpenProject, 
                     </Button>
                     <span className="row-actions">
                       {row.url ? (
-                        <Button size="sm" icon="external" onClick={() => onOpenUrl?.(row.url)}>
+                        <Button size="sm" icon="external" onClick={() => onOpenUrl?.(row.url, row.processName || `端口 ${row.port}`)}>
                           打开
                         </Button>
                       ) : null}

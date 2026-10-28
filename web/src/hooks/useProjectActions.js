@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { api } from '../api/client.js'
+import { useEmbed } from './useEmbed.jsx'
 import { useToast } from './useToast.jsx'
 
 /**
@@ -8,6 +9,7 @@ import { useToast } from './useToast.jsx'
  */
 export function useProjectActions(onChanged) {
   const toast = useToast()
+  const embed = useEmbed()
   const [busy, setBusy] = useState({})
 
   async function exec(project, action, fn, onResult) {
@@ -66,17 +68,15 @@ export function useProjectActions(onChanged) {
         project,
         'open-url',
         async () => {
+          // 只向后端问"该开哪个地址"，进程一个都不起（省掉 cmd.exe 的几百毫秒）
           const data = await api.openProjectUrl(project.id)
-          // 由浏览器自己开窗口：省掉后端 cmd.exe 的进程创建（几百毫秒），
-          // 点下去新窗口几乎立刻出现，不再"点了没反应、然后白一下才出来"。
-          const win = window.open(data.url, '_blank', 'noopener')
-          if (!win) {
-            // 弹窗被拦截时退回后端用系统默认浏览器打开——总比点了没反应强
-            return api.openProjectUrl(project.id, { clientOpen: false })
-          }
+          // 在工作台内部用 iframe 打开：没有新窗口的建窗白屏期，从头到尾看不到白色。
+          // 抽屉顶部仍留「新窗口」出口，站点禁止内嵌时由用户显式选择。
+          embed.openEmbed({ url: data.url, name: project.name })
           return data
         },
-        (data, t) => t.info('已在浏览器打开', data.url || data.opened),
+        // 内嵌打开是即时的，不弹 toast——抽屉本身就是反馈，再多一句反而吵
+        null,
       ),
     copyPath: (project) => exec(project, 'copy', () => api.copyProject(project.id, 'path'), (data, t) => t.success('路径已复制到剪贴板', data.copied)),
     copyUrl: (project) => exec(project, 'copy', () => api.copyProject(project.id, 'url'), (data, t) => t.success('地址已复制到剪贴板', data.copied)),

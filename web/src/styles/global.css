@@ -2611,3 +2611,169 @@ code,
   font-size: var(--fs-xs);
   color: var(--muted-2);
 }
+
+/* ============ 内嵌抽屉（打开应用不再开新窗口） ============ */
+/* 目的只有一个：把"点开应用 → 白一下才出现"彻底去掉。
+   做法是不开新窗口（新窗口必然先建白色画布），改为同页 iframe。
+   底色走 --surface-inset，iframe 在 onLoad 前完全透明，露出的始终是这块深色。 */
+.embed-mask {
+  position: fixed;
+  inset: 0;
+  z-index: 200;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  background: rgba(6, 8, 10, 0.62);
+  backdrop-filter: blur(2px);
+  animation: embed-fade 120ms ease-out;
+}
+
+@keyframes embed-fade {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.embed-shell {
+  display: flex;
+  flex-direction: column;
+  width: min(1280px, 100%);
+  height: 100%;
+  max-height: calc(100vh - 48px);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  box-shadow: 0 18px 48px rgba(0, 0, 0, 0.45);
+  overflow: hidden;
+}
+
+.embed-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 8px 10px 8px 14px;
+  border-bottom: 1px solid var(--border-soft);
+  background: var(--surface-2);
+  flex: 0 0 auto;
+}
+
+.embed-head__title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  color: var(--text);
+  font-size: var(--fs-sm);
+}
+
+.embed-head__title b {
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.embed-head__url {
+  font-size: var(--fs-xs);
+  font-family: var(--font-mono, ui-monospace, monospace);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.embed-head__actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex: 0 0 auto;
+}
+
+/* 关键：容器本身有深色底，iframe 加载完成前是透明的 */
+.embed-body {
+  position: relative;
+  flex: 1 1 auto;
+  min-height: 0;
+  background: var(--surface-inset);
+}
+
+.embed-frame {
+  width: 100%;
+  height: 100%;
+  border: 0;
+  display: block;
+  /* 必须是深色底、不能透明：浏览器自己的错误页（"无法访问"/"拒绝连接"）
+     底色是浅灰 r≈221，透出来就是一片刺眼的白灰——那是新的闪白来源。 */
+  background: var(--surface-inset);
+  opacity: 1;
+  transition: opacity 140ms ease-out;
+}
+
+
+.embed-loading {
+  position: absolute;
+  inset: 0;
+  /* 必须盖在 iframe 之上：应用页面自己多半是白底，
+     在它画完之前这一层把白色完全挡住，load 后再淡出。 */
+  z-index: 2;
+  animation: embed-fade 90ms ease-out;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  color: var(--muted);
+  font-size: var(--fs-sm);
+  background: var(--surface-inset);
+}
+
+.embed-loading__hint {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: var(--fs-xs);
+  color: var(--muted-2);
+}
+
+.embed-loading__hint a {
+  color: var(--accent);
+  text-decoration: underline;
+}
+
+@media (max-width: 720px) {
+  .embed-mask { padding: 0; }
+  .embed-shell { max-height: 100vh; border-radius: 0; border: 0; }
+  .embed-head__url { display: none; }
+}
+
+/* 服务没在跑时的提示：比让浏览器甩一张浅灰错误页友好得多 */
+.embed-notice {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 28px 32px;
+  color: var(--text);
+  background: var(--surface-inset);
+}
+
+.embed-notice b {
+  display: block;
+  margin-bottom: 8px;
+  font-size: var(--fs-md, 14px);
+}
+
+.embed-notice p {
+  margin: 0 0 6px;
+  font-size: var(--fs-sm);
+  line-height: 1.7;
+  max-width: 62ch;
+}
+
+.embed-notice code {
+  font-family: var(--font-mono, ui-monospace, monospace);
+  font-size: var(--fs-xs);
+  color: var(--muted);
+  background: var(--surface-2);
+  padding: 1px 6px;
+  border-radius: 4px;
+}

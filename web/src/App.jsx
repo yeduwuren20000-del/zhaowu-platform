@@ -1,6 +1,7 @@
 import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom'
 import { AppShell } from './components/AppShell.jsx'
 import { ToastProvider } from './hooks/useToast.jsx'
+import { EmbedProvider } from './hooks/useEmbed.jsx'
 import { DashboardPage } from './pages/Dashboard.jsx'
 import DockerPage from './pages/Docker.jsx'
 import { LogsPage } from './pages/Logs.jsx'
@@ -19,6 +20,7 @@ import { UptimePage } from './pages/Uptime.jsx'
 export default function App() {
   return (
     <ToastProvider>
+      <EmbedProvider>
       <BrowserRouter>
         <Routes>
           <Route element={<AppShell />}>
@@ -40,6 +42,7 @@ export default function App() {
           </Route>
         </Routes>
       </BrowserRouter>
+      </EmbedProvider>
     </ToastProvider>
   )
 }

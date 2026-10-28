@@ -53,3 +53,7 @@ coverage/
 .DS_Store
 Thumbs.db
 desktop.ini
+
+# 截图与调试输出（ui-snapshot / _e2e-*.mjs 生成，不进仓库）
+.shots/
+**/.shots/

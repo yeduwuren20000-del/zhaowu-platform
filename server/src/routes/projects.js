@@ -138,9 +138,10 @@ router.post(
     if (!template.includes('{port}') && declared && actual && declared !== actual) {
       url = url.replace(new RegExp(`:${declared}(?=[/?#]|$)`), `:${actual}`)
     }
-    // 前端自己开窗口时只把地址交回去，由浏览器直接打开。
-    // 走 cmd.exe 要多付一次进程创建（几百毫秒）＋浏览器新窗口先出白底再加载，
-    // 用户感知就是"点了没反应，然后白一下才出来"。
+    // 只把地址交回去，前端在**工作台内部**用 iframe 打开（内嵌抽屉）。
+    // 两条路都比走 cmd.exe 好：cmd.exe 要多付一次进程创建（几百毫秒）；
+    // 而新开浏览器窗口必然先画白色画布、再等首帧，用户看到的就是"闪白"。
+    // 内嵌没有建窗这一步，iframe 载入前透明、底下是深色底，全程不出现白色。
     if (req.body?.clientOpen) {
       sendOk(res, { url, clientOpen: true })
       return

@@ -3,6 +3,7 @@ import { useLocation, useNavigate } from 'react-router-dom'
 import { api } from '../api/client.js'
 import { useAsync, usePolling } from '../hooks/useAsync.js'
 import { useToast } from '../hooks/useToast.jsx'
+import { useEmbed } from '../hooks/useEmbed.jsx'
 import { PortTable } from '../components/PortTable.jsx'
 import { PageHint } from '../components/PageHint.jsx'
 import { statusMeta } from '../utils/format.js'
@@ -12,6 +13,7 @@ export function PortsPage() {
   const location = useLocation()
   const navigate = useNavigate()
   const toast = useToast()
+  const embed = useEmbed()
   const { data, loading, error, reload } = useAsync(() => api.ports(true), { deps: [] })
   const [env, setEnv] = useState('all')
   const [query, setQuery] = useState('')
@@ -47,9 +49,10 @@ export function PortsPage() {
     }
   }
 
-  function openUrl(url) {
+  // 同样走工作台内嵌抽屉：新窗口会有建窗白屏，内嵌没有
+  function openUrl(url, name) {
     if (!url) return
-    window.open(url, '_blank', 'noopener')
+    embed.openEmbed({ url, name: name || '端口页面' })
   }
 
   async function copyPath(path) {
