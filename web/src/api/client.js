@@ -41,7 +41,8 @@ export const api = {
   stopProject: (id) => request(`/projects/${id}/stop`, { method: 'POST' }),
   restartProject: (id) => request(`/projects/${id}/restart`, { method: 'POST' }),
   openProjectDir: (id) => request(`/projects/${id}/open-dir`, { method: 'POST' }),
-  openProjectUrl: (id) => request(`/projects/${id}/open-url`, { method: 'POST' }),
+  // clientOpen=true：只取回最终地址，由前端自己开窗口（快，无 cmd.exe 启动开销）
+  openProjectUrl: (id, { clientOpen = true } = {}) => request(`/projects/${id}/open-url`, { method: 'POST', body: { clientOpen } }),
   copyProject: (id, what = 'path') => request(`/projects/${id}/copy`, { method: 'POST', body: { what } }),
   projectLog: (id, lines = 200) => request(`/projects/${id}/log?lines=${lines}`),
   clearProjectLog: (id) => request(`/projects/${id}/log`, { method: 'DELETE' }),

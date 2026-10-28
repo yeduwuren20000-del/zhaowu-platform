@@ -60,40 +60,40 @@ async function reset(projects) {
   return created
 }
 
-console.log('【父子目录 + 同端口 → 疑似重复登记，不是真冲突】')
+console.log('【父子目录 + 同端口 → 自动归一，不用用户处理】')
 {
-  const [parent, child] = await reset([
+  await reset([
     { name: 'DevServerManager', dir: 'D:\\workspaces\\DevServerManager', port: 5180, type: 'React + Vite' },
     { name: 'dev-server-manager-web', dir: 'D:\\workspaces\\DevServerManager\\web', port: 5180, type: 'Vite 开发服务器' },
   ])
   const views = await buildProjectViews({ force: false })
   const mapping = await buildMappings({ projectViews: views, servers: [] })
 
-  check('两项目都标记为疑似重复登记', views.every((v) => v.status === 'possible-duplicate'), views.map((v) => `${v.name}:${v.status}`))
-  check('不是 conflict 状态', views.every((v) => v.status !== 'conflict'), views.map((v) => v.status))
-  check('状态文案不是"端口冲突"', views.every((v) => v.statusText === '疑似重复登记'), views.map((v) => v.statusText))
+  // 父项目 + 它自己的 web/ 子目录是同一个项目的两种登记粒度，不该占用用户的注意力
+  check('不再标"疑似重复登记"', views.every((v) => v.status !== 'possible-duplicate'), views.map((v) => `${v.name}:${v.status}`))
+  check('不标 conflict', views.every((v) => v.status !== 'conflict'), views.map((v) => v.status))
 
-  check('只产生 1 条冲突（不是每个项目一条）', mapping.conflicts.length === 1, mapping.conflicts)
-  const c = mapping.conflicts[0]
-  check('冲突类型是 duplicate-registration', c.type === 'duplicate-registration', c)
-  check('标记了 duplicateRegistration', c.duplicateRegistration === true, c)
-  check('文案点明是父子目录关系', /目录在.*之内/.test(c.message), c.message)
-  check('文案点明不是真的冲突', /不是真的端口冲突/.test(c.message), c.message)
-  check('文案包含两个项目名', c.message.includes('DevServerManager') && c.message.includes('dev-server-manager-web'), c.message)
+  const parentView = views.find((v) => v.name === 'DevServerManager')
+  const childView = views.find((v) => v.name === 'dev-server-manager-web')
+  check('子项目标注被父项目覆盖', childView?.coveredBy === 'DevServerManager', childView?.coveredBy)
+  check('子项目说明文案可读', /由父项目「DevServerManager」统一管理/.test(childView?.coverageNote || ''), childView?.coverageNote)
+  check('父项目不带覆盖标记', !parentView?.coveredBy, parentView?.coveredBy)
+  check('端口映射不再冒出这条冲突', mapping.conflicts.length === 0, mapping.conflicts)
 }
 
-console.log('\n【文案稳定：不受遍历顺序影响】')
+console.log('\n【自动归一的结论不受登记顺序影响】')
 {
-  const again = await buildMappings({ projectViews: await buildProjectViews({ force: false }), servers: [] })
-  const first = again.conflicts[0]?.message
-  // 反转项目顺序重建，文案必须一字不差
+  const first = await buildProjectViews({ force: false })
+  const firstCoveredBy = first.find((v) => v.name === 'dev-server-manager-web')?.coveredBy
+  // 反转项目顺序重建，结论必须一致（父子关系由目录决定，不由登记先后决定）
   await reset([
     { name: 'dev-server-manager-web', dir: 'D:\\workspaces\\DevServerManager\\web', port: 5180, type: 'Vite 开发服务器' },
     { name: 'DevServerManager', dir: 'D:\\workspaces\\DevServerManager', port: 5180, type: 'React + Vite' },
   ])
-  const reversed = await buildMappings({ projectViews: await buildProjectViews({ force: false }), servers: [] })
-  check('反转登记顺序后文案不变', reversed.conflicts[0]?.message === first, { before: first, after: reversed.conflicts[0]?.message })
-  check('反转后仍然只有 1 条', reversed.conflicts.length === 1, reversed.conflicts.length)
+  const reversed = await buildProjectViews({ force: false })
+  check('反转登记顺序后覆盖关系不变', reversed.find((v) => v.name === 'dev-server-manager-web')?.coveredBy === firstCoveredBy, { firstCoveredBy })
+  const reversedMapping = await buildMappings({ projectViews: reversed, servers: [] })
+  check('反转后依然没有冲突', reversedMapping.conflicts.length === 0, reversedMapping.conflicts)
 }
 
 console.log('\n【互不相关的目录 + 同端口 → 仍然是真冲突】')
@@ -155,15 +155,17 @@ console.log('\n【目录完全相同 ≠ 重复登记，仍是真冲突】')
   check('不标记为重复登记', mapping.conflicts[0]?.duplicateRegistration !== true, mapping.conflicts[0])
 }
 
-console.log('\n【目录大小写与斜杠差异不应误判成父子】')
+console.log('\n【目录大小写与斜杠差异仍算同一父子关系】')
 {
   // D:\Workspaces\app 与 d:/workspaces/app 是同一个目录（Windows 不区分大小写）
   await reset([
     { name: '父项目', dir: 'D:\\Workspaces\\app', port: PORT_F },
     { name: '子项目', dir: 'd:/workspaces/app/web', port: PORT_F },
   ])
-  const mapping = await buildMappings({ projectViews: await buildProjectViews({ force: false }), servers: [] })
-  check('大小写/斜杠不同仍识别为父子', mapping.conflicts[0]?.type === 'duplicate-registration', mapping.conflicts[0])
+  const views = await buildProjectViews({ force: false })
+  const mapping = await buildMappings({ projectViews: views, servers: [] })
+  check('大小写/斜杠不同仍识别为父子', views.find((v) => v.name === '子项目')?.coveredBy === '父项目', views.map((v) => `${v.name}:${v.coveredBy ?? '-'}`))
+  check('归一后不产生冲突', mapping.conflicts.length === 0, mapping.conflicts)
 }
 
 console.log('\n【非父子但前缀相同不应误判】')

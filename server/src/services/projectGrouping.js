@@ -23,7 +23,14 @@ export const GROUP_STATUS = {
 /** 目录归一化：统一分隔符、去尾部斜杠、Windows 大小写不敏感 */
 export function normalizeDir(dir) {
   if (!dir) return ''
-  let value = String(dir).trim().replace(/\//g, '\\').replace(/\\+$/, '')
+  let value = String(dir).trim().replace(/\//g, '\\')
+  // 压掉重复分隔符：用户手填或从别处粘贴的 "D://30651//dify//docker" 必须和
+  // "D:\30651\dify\docker" 归一成同一个 key，否则目录归属判断永远对不上。
+  // UNC 路径（\\server\share）的前导双反斜杠有意义，压缩后要补回来。
+  const isUnc = value.startsWith('\\\\')
+  value = value.replace(/\\{2,}/g, '\\')
+  if (isUnc) value = `\\${value}`
+  value = value.replace(/\\+$/, '')
   if (/^[a-zA-Z]:/.test(value)) value = `${value[0].toUpperCase()}${value.slice(1)}`
   return value.toLowerCase()
 }
@@ -186,6 +193,42 @@ function isInsideProject(candidateDir, groupDir) {
   return child === groupDir || child.startsWith(`${groupDir}\\`)
 }
 
+/**
+ * 监听者是「容器端口代理」吗？
+ *
+ * Windows 上 Docker Desktop 通过 WSL 把容器端口转发到宿主机，真正持有 80/8790/3001
+ * 这些端口的是 `wslrelay.exe`，而不是项目自己的进程。把这种情况当"外来进程抢占"
+ * 会得出"容器明明跑着却报冲突"的结论（实测 Dify / Stirling-PDF / Uptime Kuma 三连误报）。
+ */
+const CONTAINER_PROXY_NAMES = new Set([
+  'wslrelay',
+  'docker-proxy',
+  'com.docker.backend',
+  'vpnkit',
+  'dockerd',
+  'containerd',
+  'podman',
+])
+
+function isContainerPortProxy(candidate) {
+  const raw = String(candidate?.processName || candidate?.exePath || '')
+  const base = raw.split(/[\\/]/).pop() || ''
+  const name = base.toLowerCase().replace(/\.exe$/, '').trim()
+  return CONTAINER_PROXY_NAMES.has(name)
+}
+
+/** 项目自己是不是容器部署——决定"容器代理占了端口"算不算自家的事 */
+function isContainerProject(project) {
+  if (!project) return false
+  if (project.containerName) return true
+  const kind = String(project.type || project.kind || '').toLowerCase()
+  return /docker|compose|container/.test(kind)
+}
+
+// 项目视图（projectService）也要用同一套判断，否则同一个项目在
+// 「项目」页说冲突、「自动发现」页说正常，用户不知道该信哪个。
+export { isContainerPortProxy, isContainerProject }
+
 function foreignOwnerConflicts(registered, usable, groupDir) {
   const conflicts = []
   if (!registered?.port) return conflicts
@@ -195,6 +238,12 @@ function foreignOwnerConflicts(registered, usable, groupDir) {
     (candidate) => Number(candidate.port) === Number(registered.port) && !isInsideProject(candidate.projectDir, normalizedGroupDir),
   )
   if (foreign) {
+    // 容器端口代理转发 + 本项目自己就是容器部署 → 这是"容器在正常运行"的正常表现，
+    // 不是外来进程抢端口。豁免掉，让状态回到 all-running。
+    // 但若本项目不是容器部署，别人的容器占了你的端口就是真冲突，照旧报。
+    if (isContainerPortProxy(foreign) && isContainerProject(registered)) {
+      return conflicts
+    }
     conflicts.push({
       port: Number(registered.port),
       type: 'foreign-owner',

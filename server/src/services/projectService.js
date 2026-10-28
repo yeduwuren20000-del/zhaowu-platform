@@ -4,6 +4,7 @@ import { pathExistsSync } from '../utils/fsx.js'
 import { runFile } from '../utils/exec.js'
 import { processInfo } from './processInfo.js'
 import { portScanner } from './portScanner.js'
+import { isContainerPortProxy, isContainerProject } from './projectGrouping.js'
 
 /**
  * 项目视图 = 数据库记录 + 真实端口监听状态 + 真实进程信息。
@@ -95,7 +96,16 @@ function buildView(project, { portIndex, runtimes, stats, ancestry, dockerContai
       project.port &&
       (dockerContainers.get(project.containerName) || new Set()).has(Number(project.port)),
   )
+  let containerProxied = false
   if (containerIsOurs) ownerIsOurs = true
+
+  // 容器代理豁免：Docker Desktop 在 Windows 上由 wslrelay 持有宿主机端口，项目自己
+  // 又是容器部署（Dify 这种 compose 项目常常没登记 containerName）→ 这就是"容器在跑"，
+  // 不能报"端口被占用"。与自动发现页（projectGrouping）用同一套判断，避免两页结论打架。
+  if (!ownerIsOurs && owner && isContainerPortProxy(owner) && isContainerProject(project)) {
+    ownerIsOurs = true
+    containerProxied = true
+  }
 
   let status = 'stopped'
   let statusText = '已停止'
@@ -104,7 +114,7 @@ function buildView(project, { portIndex, runtimes, stats, ancestry, dockerContai
   if (owner) {
     if (ownerIsOurs) {
       status = 'running'
-      statusText = containerIsOurs ? '运行中（容器）' : '运行中'
+      statusText = containerIsOurs || containerProxied ? '运行中（容器）' : '运行中'
     } else if (runtimeAlive) {
       status = 'conflict'
       statusText = '端口冲突'
@@ -229,20 +239,28 @@ function markDuplicatePorts(views) {
   }
   for (const [port, list] of byPort) {
     if (list.length < 2) continue
+    // 父子目录 + 同端口 = 同一个项目被登记成了两种粒度（父项目 + 它自己的 web/ 子目录）。
+    // 父项目本来就覆盖子目录，这对不是冲突，也不该让用户手工删掉一条记录：
+    // 自动归一——保留两边记录，只在子项目上标注"由父项目统一管理"，状态各按真实情况走。
+    const nested = classifyDuplicate(list)
+    if (nested) {
+      for (const view of list) {
+        if (view.name === nested.child) {
+          view.coveredBy = nested.parent
+          view.coverageNote = `端口 ${port} 已由父项目「${nested.parent}」统一管理，无需单独处理`
+        }
+      }
+      continue
+    }
     // 同一条冲突的文案对所有相关项目必须一致：名字去重 + 排序，
     // 否则会因遍历顺序不同出现「A、B」和「B、A」两份看起来不同的冲突。
     const names = [...new Set(list.map((view) => view.name))].sort()
-    const duplicate = classifyDuplicate(list)
-    const message = duplicate
-      ? duplicate.message
-      : `端口 ${port} 同时被 ${names.length} 个项目声明：${names.join('、')}`
-    const type = duplicate ? duplicate.type : 'duplicate'
+    const message = `端口 ${port} 同时被 ${names.length} 个项目声明：${names.join('、')}`
     for (const view of list) {
-      view.conflict = { type, message, duplicateRegistration: Boolean(duplicate) }
+      view.conflict = { type: 'duplicate', message, duplicateRegistration: false }
       if (view.status !== 'running') {
-        // 重复登记不是"出故障"，别把它标成冲突红点：用"疑似重复登记"的中性说法
-        view.status = duplicate ? 'possible-duplicate' : 'conflict'
-        view.statusText = duplicate ? '疑似重复登记' : '端口重复声明'
+        view.status = 'conflict'
+        view.statusText = '端口重复声明'
       }
     }
   }

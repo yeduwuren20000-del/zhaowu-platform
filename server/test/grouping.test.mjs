@@ -216,6 +216,53 @@ console.log('\n[9] 冲突判定')
   check('冲突指向真实占用者', /java\.exe/.test(conflictGroup?.conflicts?.[0]?.message || ''), conflictGroup?.conflicts)
 }
 
+console.log('\n[9.7] 容器端口代理不算外来冲突（Docker Desktop / WSL 场景）')
+{
+  // 复现现场：Dify(80) / Stirling-PDF(8790) / Uptime Kuma(3001) 三个容器都在跑，
+  // 但宿主机端口由 wslrelay.exe 持有、projectDir 推不出来 → 旧逻辑一律报"存在冲突"。
+  const containerApp = project({
+    id: 'prj_docker',
+    name: 'Stirling-PDF',
+    dir: 'D:\\projects\\docker-app',
+    port: 8790,
+    type: 'docker',
+    containerName: 'workbench-stirling',
+  })
+  const viaWsl = buildProjectGroups({
+    candidates: [candidate({ port: 8790, pid: 29980, processName: 'wslrelay.exe', projectDir: null, exePath: '' })],
+    projects: [containerApp],
+  })
+  const wslGroup = viaWsl.groups.find((group) => group.registeredProjectId === 'prj_docker')
+  check('容器项目 + wslrelay 持端口 → 不报冲突', wslGroup?.conflicts.length === 0, wslGroup?.conflicts)
+  check('容器在跑 → 判为运行中', wslGroup?.status === GROUP_STATUS.allRunning.status, wslGroup?.status)
+
+  // 反例一：不是容器部署的项目，端口被容器代理占着就是真冲突（别人的容器抢了你的端口）
+  const plainApp = project({ id: 'prj_plain', name: '普通前端', dir: 'D:\\projects\\plain', port: 8790, type: 'Node' })
+  const plainCase = buildProjectGroups({
+    candidates: [candidate({ port: 8790, pid: 29980, processName: 'wslrelay.exe', projectDir: null })],
+    projects: [plainApp],
+  })
+  const plainGroup = plainCase.groups.find((group) => group.registeredProjectId === 'prj_plain')
+  check('非容器项目 + 容器代理持端口 → 仍是冲突', plainGroup?.status === 'conflict', plainGroup?.status)
+
+  // 反例二：容器项目，但占用者是普通进程（别人手起的 java）→ 也得报
+  const realClash = buildProjectGroups({
+    candidates: [candidate({ port: 8790, pid: 7001, processName: 'java.exe', projectDir: 'D:\\other\\svc' })],
+    projects: [containerApp],
+  })
+  const clashGroup = realClash.groups.find((group) => group.registeredProjectId === 'prj_docker')
+  check('容器项目 + 普通进程持端口 → 仍是冲突', clashGroup?.status === 'conflict', clashGroup?.status)
+}
+
+console.log('\n[9.8] 畸形目录归一（D://30651//dify//docker 这类手填路径）')
+{
+  const weird = normalizeDir('D://30651//dify//docker')
+  const normal = normalizeDir('D:\\30651\\dify\\docker')
+  check('重复分隔符与正斜杠归一一致', weird === normal, { weird, normal })
+  check('UNC 路径前导双斜杠保留', normalizeDir('\\\\server\\share\\dir') === '\\\\server\\share\\dir', normalizeDir('\\\\server\\share\\dir'))
+  check('尾部反斜杠忽略', normalizeDir('D:\\a\\b\\\\') === normalizeDir('D:\\a\\b'), normalizeDir('D:\\a\\b\\\\'))
+}
+
 console.log('\n[9.5] 目录识别不出来时，仍要按端口判定存活（真实踩坑回归）')
 {
   // 复现现场：本工作台的 2299/8787 是后台启动的，扫描推断不出项目目录，

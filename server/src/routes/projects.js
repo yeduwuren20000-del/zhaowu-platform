@@ -138,6 +138,13 @@ router.post(
     if (!template.includes('{port}') && declared && actual && declared !== actual) {
       url = url.replace(new RegExp(`:${declared}(?=[/?#]|$)`), `:${actual}`)
     }
+    // 前端自己开窗口时只把地址交回去，由浏览器直接打开。
+    // 走 cmd.exe 要多付一次进程创建（几百毫秒）＋浏览器新窗口先出白底再加载，
+    // 用户感知就是"点了没反应，然后白一下才出来"。
+    if (req.body?.clientOpen) {
+      sendOk(res, { url, clientOpen: true })
+      return
+    }
     sendOk(res, await openUrl(url))
   }),
 )

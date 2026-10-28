@@ -61,7 +61,23 @@ export function useProjectActions(onChanged) {
         else t.warn(`${project.name} 重启后未就绪`, result.message)
       }),
     openDir: (project) => exec(project, 'open-dir', () => api.openProjectDir(project.id), (data, t) => t.info('已打开项目目录', data.opened)),
-    openUrl: (project) => exec(project, 'open-url', () => api.openProjectUrl(project.id), (data, t) => t.info('已在浏览器打开', data.opened)),
+    openUrl: (project) =>
+      exec(
+        project,
+        'open-url',
+        async () => {
+          const data = await api.openProjectUrl(project.id)
+          // 由浏览器自己开窗口：省掉后端 cmd.exe 的进程创建（几百毫秒），
+          // 点下去新窗口几乎立刻出现，不再"点了没反应、然后白一下才出来"。
+          const win = window.open(data.url, '_blank', 'noopener')
+          if (!win) {
+            // 弹窗被拦截时退回后端用系统默认浏览器打开——总比点了没反应强
+            return api.openProjectUrl(project.id, { clientOpen: false })
+          }
+          return data
+        },
+        (data, t) => t.info('已在浏览器打开', data.url || data.opened),
+      ),
     copyPath: (project) => exec(project, 'copy', () => api.copyProject(project.id, 'path'), (data, t) => t.success('路径已复制到剪贴板', data.copied)),
     copyUrl: (project) => exec(project, 'copy', () => api.copyProject(project.id, 'url'), (data, t) => t.success('地址已复制到剪贴板', data.copied)),
   }
