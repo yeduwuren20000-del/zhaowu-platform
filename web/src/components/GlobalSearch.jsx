@@ -4,6 +4,7 @@ import { api } from '../api/client.js'
 import { statusMeta } from '../utils/format.js'
 import { Icon } from './Icons.jsx'
 import { useToast } from '../hooks/useToast.jsx'
+import { useEmbed } from '../hooks/useEmbed.jsx'
 
 /**
  * 全局命令面板（Ctrl/Cmd + K）：
@@ -43,6 +44,7 @@ const DEFAULT_COMMAND_COUNT = 5
 export function GlobalSearch() {
   const navigate = useNavigate()
   const toast = useToast()
+  const embed = useEmbed()
   const [query, setQuery] = useState('')
   const [result, setResult] = useState(null)
   const [open, setOpen] = useState(false)
@@ -113,7 +115,10 @@ export function GlobalSearch() {
             toast.warn('该项目没有访问地址', '编辑项目补充 url 或端口')
             return
           }
-          window.open(url, '_blank', 'noopener')
+          // 和项目页 / 端口页一致：内部项目地址走内嵌抽屉，不再开新窗口闪白
+          setOpen(false)
+          setQuery('')
+          embed.openEmbed({ url, name: project.name })
         } else if (action === 'log') {
           navigate('/logs', { state: { source: `project:${project.id}` } })
           setOpen(false)
@@ -124,7 +129,7 @@ export function GlobalSearch() {
         setBusyId('')
       }
     },
-    [navigate, toast],
+    [navigate, toast, embed],
   )
 
   const text = query.trim().toLowerCase()

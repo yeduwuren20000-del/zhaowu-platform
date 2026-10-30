@@ -24,6 +24,13 @@ web/dist-test/
 
 # 运行数据：项目/服务器/端口/事件/日志全部是本机私有状态，一律不提交
 # （首次启动会自动生成种子数据，见 server/src/store/*.js）
+#
+# ★★★ 安全红线（任何优化 / 清理 / 重构都禁止违反）★★★
+# 本目录含凭据库密文 data/vault.dsmv 与自动快照 data/vault-backups/，以及其它本机私有状态。
+# 切勿执行 `git clean -fdx` —— 带 -x 会删除被忽略的 data/，直接抹掉凭据库与全部运行数据！
+# 同样禁止 `git stash -a` / `git stash --all`，以及任何 `rm` / `Remove-Item data/`。
+# 凭据防丢失靠两条：① 本段忽略规则（git 永远碰不到 data/）；
+# ② 应用层 server/src/services/vaultService.js 的 writeVaultFile 在「每次覆盖写之前」自动快照到 vault-backups（保留 20 份）。
 data/*
 !data/secrets.example.json
 
