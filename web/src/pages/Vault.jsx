@@ -79,10 +79,47 @@ function ContentCell({ content }) {
   )
 }
 
-/** 编辑框：只有标题 + 内容两个字段 */
+/** 编辑框：标题 + 内容。内容支持两种录入方式——多行整块粘贴 / 单行逐条增删改 */
 function EntryForm({ initial, onSubmit, onClose, submitting }) {
   const [title, setTitle] = useState(initial?.title || '')
   const [content, setContent] = useState(initial?.content || '')
+  const [mode, setMode] = useState(initial?.content?.includes('\n') ? 'multi' : 'single')
+  const [lines, setLines] = useState(initial?.content ? initial.content.split('\n') : [])
+  const [newLine, setNewLine] = useState('')
+
+  const switchMode = (next) => {
+    if (next === mode) return
+    if (next === 'single') {
+      setLines(content.split('\n'))
+    } else {
+      setContent(lines.join('\n'))
+    }
+    setMode(next)
+  }
+
+  const addLine = () => {
+    const v = newLine.replace(/\r/g, '')
+    if (!v) return
+    setLines((p) => [...p, v])
+    setNewLine('')
+  }
+
+  const editLine = (i, v) => setLines((p) => p.map((l, idx) => (idx === i ? v : l)))
+  const removeLine = (i) => setLines((p) => p.filter((_, idx) => idx !== i))
+
+  // 提交前的归一：去掉末尾空行
+  const finalContent = () => {
+    if (mode === 'single') {
+      const arr = [...lines]
+      while (arr.length && arr[arr.length - 1] === '') arr.pop()
+      return arr.join('\n')
+    }
+    let c = content
+    while (c.endsWith('\n')) c = c.slice(0, -1)
+    return c
+  }
+
+  const hasContent = mode === 'single' ? lines.some((l) => l.trim()) : Boolean(content.trim())
 
   return (
     <Modal
@@ -92,7 +129,7 @@ function EntryForm({ initial, onSubmit, onClose, submitting }) {
       footer={
         <>
           <Button onClick={onClose}>取消</Button>
-          <Button variant="primary" icon="check" loading={submitting} disabled={!title.trim() || !content} onClick={() => onSubmit({ id: initial?.id, title, content })}>
+          <Button variant="primary" icon="check" loading={submitting} disabled={!title.trim() || !hasContent} onClick={() => onSubmit({ id: initial?.id, title, content: finalContent() })}>
             保存
           </Button>
         </>
@@ -100,16 +137,65 @@ function EntryForm({ initial, onSubmit, onClose, submitting }) {
     >
       <div className="form-grid">
         <Field label="标题 *" full>
-          <input className="input" value={title} placeholder="生产机 root 私钥" onChange={(e) => setTitle(e.target.value)} />
+          <input className="input" value={title} placeholder="部门服务器 / 生产机 root 私钥" onChange={(e) => setTitle(e.target.value)} />
         </Field>
-        <Field label="内容 *" full hint="私钥、密码、Token、证书或任何想记住的东西，原样贴进来就行">
-          <textarea
-            className="textarea"
-            rows={9}
-            value={content}
-            placeholder={'-----BEGIN OPENSSH PRIVATE KEY-----\n…\n-----END OPENSSH PRIVATE KEY-----'}
-            onChange={(e) => setContent(e.target.value)}
-          />
+        <Field label="内容 *" full hint="多行编辑：整段粘贴私钥/证书或服务器清单；单行编辑：一行一条，逐条加入、修改、删除">
+          <div className="entry-tabs">
+            <button type="button" className={`entry-tab${mode === 'multi' ? ' is-active' : ''}`} onClick={() => switchMode('multi')}>
+              多行编辑
+            </button>
+            <button type="button" className={`entry-tab${mode === 'single' ? ' is-active' : ''}`} onClick={() => switchMode('single')}>
+              单行编辑
+            </button>
+          </div>
+          {mode === 'multi' ? (
+            <textarea
+              className="textarea"
+              rows={9}
+              value={content}
+              placeholder={'-----BEGIN OPENSSH PRIVATE KEY-----\n…\n-----END OPENSSH PRIVATE KEY-----'}
+              onChange={(e) => setContent(e.target.value)}
+            />
+          ) : (
+            <div className="entry-single">
+              <div className="entry-single__list">
+                {lines.length === 0 ? (
+                  <div className="entry-single__empty">还没有内容，在下面加一行</div>
+                ) : (
+                  lines.map((l, i) => (
+                    <div className="entry-single__row" key={i}>
+                      <input
+                        className="input entry-single__input"
+                        value={l}
+                        placeholder={`第 ${i + 1} 行`}
+                        onChange={(e) => editLine(i, e.target.value)}
+                      />
+                      <button type="button" className="entry-single__del" title="删除此行" onClick={() => removeLine(i)}>
+                        <Icon name="trash" size={13} />
+                      </button>
+                    </div>
+                  ))
+                )}
+              </div>
+              <div className="entry-single__add">
+                <input
+                  className="input"
+                  value={newLine}
+                  placeholder="输入一行，回车或点「加入」"
+                  onChange={(e) => setNewLine(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      e.preventDefault()
+                      addLine()
+                    }
+                  }}
+                />
+                <Button size="sm" icon="plus" onClick={addLine} disabled={!newLine.replace(/\r/g, '').trim()}>
+                  加入
+                </Button>
+              </div>
+            </div>
+          )}
         </Field>
       </div>
     </Modal>
