@@ -80,6 +80,7 @@ export const api = {
 
   ports: (force = true) => request(`/ports${force ? '?force=1' : ''}`),
   scanPort: (port) => request(`/ports/scan?port=${encodeURIComponent(port)}`),
+  probePort: (port) => request(`/ports/probe?port=${encodeURIComponent(port)}`),
 
   logs: (lines = 100) => request(`/logs?lines=${lines}`),
   clearLogs: () => request('/logs', { method: 'DELETE' }),

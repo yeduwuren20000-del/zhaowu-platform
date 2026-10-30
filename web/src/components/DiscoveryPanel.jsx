@@ -5,6 +5,9 @@ import { ProjectGroupCard, ServiceList } from './ServiceList.jsx'
 import { Button, EmptyState, SearchBox, Switch } from './ui.jsx'
 import { formatDateTime } from '../utils/format.js'
 
+/** 本地服务数据超过这个时长（ms）视为陈旧，面板打开时后台静默补扫一次 */
+const STALE_MS = 120000
+
 /** 自动发现面板：默认按项目目录分组，事实字段只来自系统采集 */
 export function DiscoveryPanel({ onRegistered, onClose }) {
   const toast = useToast()
@@ -20,18 +23,39 @@ export function DiscoveryPanel({ onRegistered, onClose }) {
   const [batchMode, setBatchMode] = useState(false)
   const [selected, setSelected] = useState(() => new Set())
 
-  const loadLatest = useCallback(async () => {
-    try {
-      const [groups, latestData] = await Promise.all([api.discoveryGroups(), api.discoveryLatest()])
-      setGrouping(groups)
-      setLatest(latestData)
-    } catch (error) {
-      toast.error('读取扫描结果失败', error.message)
-    }
-  }, [toast])
+  const loadLatest = useCallback(
+    async ({ autoScan = false } = {}) => {
+      try {
+        const [groups, latestData] = await Promise.all([api.discoveryGroups(), api.discoveryLatest()])
+        setGrouping(groups)
+        setLatest(latestData)
+        // 面板打开时：若从未扫过或数据已陈旧（>2 分钟），后台静默补扫一次，省去手动点「立即扫描」
+        if (autoScan) {
+          const at = latestData?.scan?.at
+          const stale = !at || Date.now() - new Date(at).getTime() > STALE_MS
+          if (stale && !scanning) {
+            setScanning(true)
+            try {
+              await api.discoveryScan(false)
+              const [g2, l2] = await Promise.all([api.discoveryGroups(), api.discoveryLatest()])
+              setGrouping(g2)
+              setLatest(l2)
+            } catch (error) {
+              toast.error('后台刷新本地服务失败', error.message)
+            } finally {
+              setScanning(false)
+            }
+          }
+        }
+      } catch (error) {
+        toast.error('读取扫描结果失败', error.message)
+      }
+    },
+    [toast],
+  )
 
   useEffect(() => {
-    loadLatest()
+    loadLatest({ autoScan: true })
   }, [loadLatest])
 
   const runScan = useCallback(async () => {

@@ -1,3 +1,4 @@
+import net from 'node:net'
 import { PORT_SCAN_TTL_MS } from '../config.js'
 import { isWindows, runFile, runPowerShellJson } from '../utils/exec.js'
 
@@ -135,10 +136,13 @@ async function isPortListening(port, options) {
   return owners.length > 0
 }
 
-/** 从 from 起找第一个空闲端口（避让用）；找不到返回 null */
-async function findFreePort(from, { limit = 200, options } = {}) {
+/** 从 from 起找第一个空闲端口（避让用）；找不到返回 null
+ *  只做一次全机扫描（拿到端口索引），循环里只查索引，避免逐个端口各扫一次（最坏 200 次扫描） */
+async function findFreePort(from, { limit = 200 } = {}) {
+  const index = await getPortIndex()
+  const taken = new Set(index.keys())
   for (let port = Number(from); port <= Math.min(Number(from) + limit, 65535); port += 1) {
-    if (!(await isPortListening(port, options ?? { force: true }))) return port
+    if (!taken.has(port)) return port
   }
   return null
 }
@@ -155,6 +159,48 @@ async function waitForPort(port, { want = true, timeoutMs = 15000, intervalMs = 
   }
 }
 
+/**
+ * 轻量端口探针：直接对环回地址做一个 TCP connect，而不去枚举全机监听表。
+ * 用于"这个端口现在能不能打开"（打开应用探活、端口页快速判断）这类高频、单端口的问题。
+ *   - 命中缓存（默认 1.5s）时几乎零成本；
+ *   - 命中（监听）时 ~1ms；未命中（未监听）时等超时（默认 500ms），仍远快于一次完整扫描（~4s）。
+ * 同时试 IPv4/IPv6 环回：localhost 可能解析到任一，任一通即视为可打开。
+ */
+const probeCache = new Map()
+const PROBE_TTL_MS = 1500
+
+function tcpProbeOnce(host, port, timeoutMs) {
+  return new Promise((resolve) => {
+    let settled = false
+    const socket = net.connect({ host, port })
+    const finish = (value) => {
+      if (settled) return
+      settled = true
+      clearTimeout(timer)
+      socket.destroy()
+      resolve(value)
+    }
+    const timer = setTimeout(() => finish(false), timeoutMs)
+    socket.on('connect', () => finish(true))
+    socket.on('error', () => finish(false))
+    socket.on('close', () => finish(false))
+  })
+}
+
+async function probePort(port, { timeoutMs = 500, force = false } = {}) {
+  const portNum = Number(port)
+  if (!Number.isInteger(portNum) || portNum < 1 || portNum > 65535) return false
+  const cached = probeCache.get(portNum)
+  if (!force && cached && Date.now() - cached.at < PROBE_TTL_MS) return cached.listening
+  const [v4, v6] = await Promise.all([
+    tcpProbeOnce('127.0.0.1', portNum, timeoutMs),
+    tcpProbeOnce('::1', portNum, timeoutMs),
+  ])
+  const listening = v4 || v6
+  probeCache.set(portNum, { at: Date.now(), listening })
+  return listening
+}
+
 export const portScanner = {
   scan,
   getPortIndex,
@@ -162,6 +208,11 @@ export const portScanner = {
   isPortListening,
   findFreePort,
   waitForPort,
+  probePort,
+  /** 清探针缓存（端口状态变化后可调用，避免 1.5s 内的陈旧判断） */
+  invalidateProbe() {
+    probeCache.clear()
+  },
   invalidate() {
     // 只清结果缓存；inflight 保持不动：正在跑的那次本身就是新鲜的，让后来的请求共享它
     cache = { at: 0, entries: [] }

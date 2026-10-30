@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
 import { api } from '../api/client.js'
 import { useAsync, usePolling } from '../hooks/useAsync.js'
@@ -14,10 +14,21 @@ export function PortsPage() {
   const navigate = useNavigate()
   const toast = useToast()
   const embed = useEmbed()
-  const { data, loading, error, reload } = useAsync(() => api.ports(true), { deps: [] })
+  // 轮询走缓存（端口状态最多 10s 滞后，足够一个轮询看板）；只有手动「刷新」才强制重新枚举全机监听表
+  const forceRef = useRef(false)
+  const { data, loading, error, reload } = useAsync(() => api.ports(forceRef.current), { deps: [] })
   const [env, setEnv] = useState('all')
   const [query, setQuery] = useState('')
   const [autoRefresh, setAutoRefresh] = useState(true)
+
+  async function refresh() {
+    forceRef.current = true
+    try {
+      await reload()
+    } finally {
+      forceRef.current = false
+    }
+  }
 
   useEffect(() => {
     if (location.state?.q) setQuery(location.state.q)
@@ -74,7 +85,7 @@ export function PortsPage() {
         <div className="page__title">服务端口</div>
         <div className="page__actions">
           <Switch checked={autoRefresh} onChange={setAutoRefresh} label="自动刷新" />
-          <Button icon="refresh" loading={loading} onClick={() => reload().catch(() => {})}>
+          <Button icon="refresh" loading={loading} onClick={() => refresh().catch(() => {})}>
             刷新
           </Button>
         </div>
@@ -102,7 +113,7 @@ export function PortsPage() {
         </span>
       </div>
 
-      {error ? <ErrorNotice error={error} onRetry={() => reload().catch(() => {})} /> : null}
+      {error ? <ErrorNotice error={error} onRetry={() => refresh().catch(() => {})} /> : null}
 
       {conflicts.length > 0 ? (
         <Notice tone="warn" icon="alert">

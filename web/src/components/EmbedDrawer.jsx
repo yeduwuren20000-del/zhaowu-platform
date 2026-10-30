@@ -55,14 +55,24 @@ export function EmbedDrawer({ target, onClose }) {
     }
 
     api
-      .scanPort(port)
+      .probePort(port)
       .then((data) => {
         if (!alive) return
         setPhase(data?.listening ? 'loading' : 'down')
       })
       .catch(() => {
-        // 探活自身失败不该拦住用户：让它试着加载，还有超时兜底
-        if (alive) setPhase('loading')
+        // 后端尚未重启到支持 /probe（旧后端没有该接口）：退回老接口 /scan（旧后端有），
+        // 仍能判断在不在监听；两者都不通再退到"试着加载"，靠 8s 超时兜底
+        if (!alive) return
+        api
+          .scanPort(port)
+          .then((data) => {
+            if (!alive) return
+            setPhase(data?.listening ? 'loading' : 'down')
+          })
+          .catch(() => {
+            if (alive) setPhase('loading')
+          })
       })
 
     return () => {

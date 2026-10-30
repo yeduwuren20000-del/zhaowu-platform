@@ -88,8 +88,8 @@ async function matchPort({ requested, keep, owner }) {
       message: `端口 ${port} 正被${owner?.processName ? ` ${owner.processName}（PID ${owner.pid}）` : '进程'}占用，反查到项目目录，按这个端口登记`,
     }
   }
-  // 复用刚刚的扫描结果：findFreePort 默认每次强制全量重扫，这里不需要
-  const free = await portScanner.findFreePort(port + 1, { limit: 100, options: {} })
+  // 找下一个空闲端口：findFreePort 现在只扫一次全机监听表并复用 10s 缓存，不会逐端口重扫
+  const free = await portScanner.findFreePort(port + 1, { limit: 100 })
   if (!free) {
     return {
       requested: port,
