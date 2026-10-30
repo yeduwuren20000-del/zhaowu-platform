@@ -35,6 +35,8 @@
     "exec": "node scripts/exec.mjs",
     "desktop": "node scripts/desktop.mjs",
     "desktop:kill": "node scripts/desktop.mjs --kill",
+    "electron": "electron electron/main.cjs",
+    "electron:kill": "electron electron/main.cjs --kill",
     "shortcut": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/install-shortcut.ps1",
     "shortcut:remove": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/install-shortcut.ps1 -Uninstall",
     "clear-demo": "node scripts/clear-demo.mjs",
@@ -44,5 +46,8 @@
   },
   "engines": {
     "node": ">=18"
+  },
+  "devDependencies": {
+    "electron": "^45.1.0"
   }
 }

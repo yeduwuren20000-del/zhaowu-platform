@@ -208,6 +208,15 @@
 - 测试：`media.test.mjs` 新增 **53 项**（认领 / 能力探测 / 端口避让 / 日志 / 真 Python 假 server.py 全生命周期 / `tools/mediaserver` 契约），全套涨到 **26 脚本 / 1391 断言**。`ui-snapshot.mjs` 新增 `media` 用例。
 - 前端体验优化：启动后**自动轮询**直到影院运行态出现（mediaserver 是独立子进程，按下「一键启动」后 HTTP 端口可能要一两秒才就绪，以往得手动点「刷新」才看到内嵌界面），状态词同步出现「启动中…」；并加 **12s 心跳**——影院在本机被手动关掉 / 崩溃 / 端口被回收时，UI 自动回到「未运行」，不再停在过时的「运行中」。
 
+**工作台封装成 Electron：启动零白闪（桌面端首选）**
+
+- 此前桌面端用系统浏览器 `--app` 模式（`scripts/desktop.mjs`），窗口在首帧绘制前是浏览器默认白底——这就是"启动闪白"的来源。
+- 现在 `npm run desktop` / `npm run electron` 优先用 Electron 拉起：新增 `electron/main.cjs` 作为"深色无白闪的窗口壳"，**后端仍是独立的 Node 进程**（工作台依赖 PowerShell/SSH/子进程，不在 Electron 渲染进程里跑），只让 Electron 管窗口。
+- 去白闪两道保险：`BrowserWindow` 的 `backgroundColor` 设为与首屏 `#boot` 骨架同色（`#0c0e11`），第一帧起就是深色；`show:false` + `ready-to-show` 事件，等页面画好才显示，跳过"白底→内容"那一帧。
+- 顺手优化：单实例锁（重复启动只聚焦已有窗口）；关闭窗口**不杀后端**（与旧 desktop 行为一致，后端可能正在托管你启动的项目），彻底停止用 `npm run electron -- --kill`；内嵌打开的应用(iframe)在窗口失焦时保持运行（`backgroundThrottling:false`）；隐藏菜单栏。
+- 没装 Electron 时，`npm run desktop` 自动退回浏览器 app 模式兜底；新增 `.npmrc` 让 `npm install` 以后自动从 npmmirror 拉 Electron 二进制（避免直连 GitHub 超时）。
+- 诚实边界：窗口壳本身的白闪已根除；但**嵌进来的应用如果自己就是白底**，看到的仍是它自己的白——与上一轮"打开应用不闪白"结论一致。
+
 ### 修复
 
 - **快速嵌入把垃圾文本的碎片留在表单里**：`!!!@@@###` 这类文本，原来只删掉认错的 `host`/`name`，却把解析出的 `username: "!!!"` 留下——用户点一下「快速填入」就得到一条半脏记录。现在只要判定 host 不像合法 IP/域名，**整个结果一起丢弃**并给出提示（host 都是乱码，说明这段文本根本不是服务器配置）。`server-quick-fill.test.mjs` 57 项，变异测试确认「退回到只删 host」会让断言变红。

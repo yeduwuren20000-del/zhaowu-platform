@@ -5,18 +5,17 @@ import { spawn } from 'node:child_process'
 import { ROOT } from './lib/run.mjs'
 
 /**
- * 桌面端封装（Windows）：用系统自带的 Edge / Chrome 以「应用窗口模式」拉起工作台。
+ * 桌面端封装：优先用 Electron 拉起工作台（无白闪），没装 Electron 时退回系统浏览器的 app 模式。
  *
- *   node scripts/desktop.mjs            # 确保后端在跑 + 打开独立应用窗口
+ *   node scripts/desktop.mjs            # 确保后端在跑 + 打开无白闪窗口（Electron）或独立应用窗口
  *   node scripts/desktop.mjs --kill      # 顺带停掉后端再退出
  *
- * 为什么用浏览器 app 模式而不是 Electron：
- *   - 工作台后端本来就只监听 127.0.0.1、且依赖大量 Node 能力（PowerShell、SSH、子进程），
- *     Electron 还要再嵌一个 Chromium + 打包，体积和复杂度都上一个台阶；
- *   - app 模式给的是**没有地址栏、没有标签、独立进程、独立任务栏图标**的窗口，
- *     观感和普通桌面程序一致，且零额外依赖（用系统已装的浏览器）。
+ * 后端仍然是一个独立的 Node 进程：工作台后端只监听 127.0.0.1、且重度依赖 Node 原生能力
+ * （PowerShell、SSH、子进程），所以不在 Electron 渲染进程里跑后端，而是主进程把它 spawn 出来，
+ * 只让 Electron 当「深色无白闪的窗口壳」。详见 electron/main.cjs。
  *
- * 独立 user-data-dir（data/.desktop-profile）：不污染你日常浏览器，也不被它的扩展/登录态干扰。
+ * 退回浏览器 app 模式时（未装 Electron）使用独立 user-data-dir（data/.desktop-profile）：
+ * 不污染你日常浏览器，也不被它的扩展/登录态干扰。
  */
 
 const SERVER_DIR = path.join(ROOT, 'server')
@@ -104,6 +103,17 @@ function openAppWindow(browser) {
 
 async function main() {
   const kill = process.argv.includes('--kill')
+
+  // 装了 Electron 就优先用它拉起（无白闪）；没装才退回下面的浏览器 app 模式
+  const electronMain = path.join(ROOT, 'electron', 'main.cjs')
+  const hasElectron = fs.existsSync(path.join(ROOT, 'node_modules', 'electron'))
+  if (hasElectron && fs.existsSync(electronMain)) {
+    const args = ['run', 'electron', '--', ...(kill ? ['--kill'] : [])]
+    const npmBin = process.platform === 'win32' ? 'npm.cmd' : 'npm'
+    const child = spawn(npmBin, args, { cwd: ROOT, stdio: 'inherit', windowsHide: false })
+    child.on('exit', (code) => process.exit(code ?? 0))
+    return
+  }
 
   if (kill) {
     console.log('正在停止工作台后端…')
