@@ -557,20 +557,59 @@ code,
   gap: 8px;
 }
 
-.secret-block__pre {
-  margin: 0;
-  padding: 10px;
+/* 多行内容：顶部操作条（显示/隐藏 + 复制全部） */
+.secret-block__bar {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+/* 多行内容主体：每行独立一行，长行自动换行，可逐行复制 */
+.secret-block__lines {
   border: 1px solid var(--border);
   border-radius: var(--radius-xs);
   background: var(--surface-inset);
-  font-family: var(--mono);
-  font-size: var(--fs-xs);
-  line-height: 1.55;
-  color: var(--text-soft);
   max-height: 260px;
   overflow: auto;
+}
+
+.secret-line {
+  display: flex;
+  align-items: stretch;
+  border-bottom: 1px solid var(--border);
+}
+
+.secret-line:last-child {
+  border-bottom: none;
+}
+
+.secret-line__text {
+  flex: 1;
+  margin: 0;
+  padding: 6px 10px;
+  font-family: var(--mono);
+  font-size: var(--fs-xs);
+  line-height: 1.5;
+  color: var(--text-soft);
   white-space: pre-wrap;
   word-break: break-all;
+  overflow-wrap: anywhere;
+}
+
+.secret-line__copy {
+  border: none;
+  background: transparent;
+  color: var(--muted);
+  cursor: pointer;
+  padding: 0 10px;
+  display: inline-flex;
+  align-items: center;
+  border-left: 1px solid var(--border);
+}
+
+.secret-line__copy:hover {
+  color: var(--text);
+  background: var(--surface-hover);
 }
 
 /* ---- 待处理清单 ---- */

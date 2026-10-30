@@ -5,9 +5,22 @@ import { Button, Card, EmptyState, Field, Modal, Notice, SkeletonList } from '..
 import { PageHint } from '../components/PageHint.jsx'
 import { useToast } from '../hooks/useToast.jsx'
 
+/** 复制文本到剪贴板，统一处理降级与提示 */
+function copyText(text, toast, okMsg = '已复制') {
+  if (!navigator.clipboard?.writeText) {
+    toast.error('复制失败，请手动选择')
+    return
+  }
+  navigator.clipboard.writeText(text).then(
+    () => toast.success(okMsg),
+    () => toast.error('复制失败，请手动选择'),
+  )
+}
+
 /**
  * 内容默认打码，点一下才显示 —— 避免旁观者一眼看到完整私钥。
- * 多行内容（私钥/证书）用「显示 N 行」，单行内容直接显示原值。
+ * 多行内容（私钥/证书/服务器清单）展开后每行独立「复制此行」，另有「复制全部」；
+ * 单行内容直接显示原值并带复制。长行自动换行（见 .secret-line__text 的 pre-wrap）。
  */
 function ContentCell({ content }) {
   const [open, setOpen] = useState(false)
@@ -26,24 +39,42 @@ function ContentCell({ content }) {
           type="button"
           className="secret-inline__toggle"
           title="复制"
-          onClick={() => {
-            navigator.clipboard?.writeText(content).then(
-              () => toast.success('已复制'),
-              () => toast.error('复制失败，请手动选择'),
-            )
-          }}
+          onClick={() => copyText(content, toast)}
         >
           <Icon name="copy" size={13} />
         </button>
       </span>
     )
   }
+
+  const lines = content.split('\n')
+  const copyLine = (line) => copyText(line, toast, '已复制该行')
+  const copyAll = () => copyText(content, toast, `已复制 ${lines.length} 行`)
+
   return (
     <div className="secret-block">
-      <Button size="sm" icon={open ? 'eye-off' : 'eye'} onClick={() => setOpen((p) => !p)}>
-        {open ? '隐藏' : `显示 ${content.split('\n').length} 行`}
-      </Button>
-      {open ? <pre className="secret-block__pre">{content}</pre> : null}
+      <div className="secret-block__bar">
+        <Button size="sm" icon={open ? 'eye-off' : 'eye'} onClick={() => setOpen((p) => !p)}>
+          {open ? '隐藏' : `显示 ${lines.length} 行`}
+        </Button>
+        <Button size="sm" icon="copy" onClick={copyAll}>
+          复制全部
+        </Button>
+      </div>
+      {open ? (
+        <div className="secret-block__lines">
+          {lines.map((line, i) => (
+            <div className="secret-line" key={i}>
+              <div className="secret-line__text">{line || ' '}</div>
+              {line.trim() ? (
+                <button type="button" className="secret-line__copy" title="复制此行" onClick={() => copyLine(line)}>
+                  <Icon name="copy" size={12} />
+                </button>
+              ) : null}
+            </div>
+          ))}
+        </div>
+      ) : null}
     </div>
   )
 }
