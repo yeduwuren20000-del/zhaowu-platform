@@ -255,6 +255,8 @@
 - **端口探活（打开应用判断"能不能打开"）从全表扫描改成直连环回 TCP**：旧逻辑每次打开应用前都走 `Get-NetTCPConnection` 全表扫描（或 `netstat`），即便命中结果缓存也要 ~4.1s——因为 `/scan` 把 `force` 写死为 `true`，永远无视 10s 缓存。新加的 `probePort` 直接对 `127.0.0.1` 与 `::1` 并行 `TCP connect`，不 spawn 进程、不枚举全机监听表：命中探针缓存（1.5s）~0ms、通畅 ~1ms、不通等超时（默认 500ms）仍远快于一次完整扫描。新增 `GET /api/ports/probe`；`/api/ports/scan` 的 `force` 改为读 query（默认走缓存），轮询不再每次重扫。前端 `EmbedDrawer` 探活从 `/scan` 切到 `/probe`，并带**跨版本回退**（probe 404 时退回旧 `/scan`），旧后端不重启也能照常判断；`Ports.jsx` 轮询默认走缓存、只有手动「刷新」才强制重新枚举。实测：新探针探活 ~1ms vs 旧扫描 ~4.1s；`portScanner.test.mjs` 9/9 通过。
 - **`findFreePort` 不再反复全表扫描（最坏 200 次 → 1 次）**：旧实现从起始端口循环 200 个候选，每个都调 `isPortListening(force:true)` 触发完整端口扫描，最坏 200 次全表扫描（分钟级）。新实现 `getPortIndex()` 只扫一次拿到全端口索引，用 `Set` 查占用，首个空闲端口即返回。`projectImport` 导入时选端口不再把后端拖进几十秒扫描（`projectImport.js` 注释同步更新）。
 - **本地服务自动发现：面板超过 2 分钟没新鲜结果时后台静默补扫**：`DiscoveryPanel` 打开时若 `scan.at` 缺失或超过 2 分钟（`STALE_MS = 120000`），后台补扫 `discoveryScan(false)`（非 AI、不打扰用户），不再让面板停在陈旧/空数据上等用户手动点「立即扫描」。
+- **端口缓存失效统一 + 删死代码**：`portScanner.invalidate()` 现在同时清「全机监听表结果缓存」与「轻量探针缓存」，删掉**从不调用**的 `invalidateProbe()`（纯死代码）。副作用是正收益：刚启动/停止/注册/改设置后，打开应用探活**不会再读到 1.5s 内的陈旧"没在运行"**——此前 `invalidate` 只清扫描缓存、漏了探针缓存，刚拉起的服务可能短暂被判 down。新增 3 项测试（`invalidate` 后非强制探活读到真实状态）锁住；`portScanner.test.mjs` 9 → **12 项**全过。
+- **本地服务面板去重**：`DiscoveryPanel` 抽出 `reloadData()`（拉「分组 + 最新结果」并写 state），初始加载与后台补扫复用同一份，去掉两处重复的 `Promise.all([discoveryGroups(), discoveryLatest()])`。行为等价，逻辑更短。
 
 ### 变更
 

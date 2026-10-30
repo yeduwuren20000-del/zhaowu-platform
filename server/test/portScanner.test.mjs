@@ -87,6 +87,27 @@ console.log('【findFreePort：只扫一次，返回真空闲端口】')
 }
 
 console.log('')
+console.log('【invalidate 同时清两处缓存】')
+{
+  // 端口未监听时探到 false 并写入探针缓存（1.5s）
+  const down = await portScanner.probePort(FREE, { force: true })
+  check('未监听端口 → false（并写入探针缓存）', down === false, `got ${down}`)
+
+  // 把端口拉起，但还不 invalidate：1.5s 内非强制探活应命中风活的 false（陈旧）
+  const { server } = await listenOn(FREE)
+  try {
+    const stale = await portScanner.probePort(FREE)
+    check('未 invalidate 时命中陈旧缓存 → false', stale === false, `got ${stale}`)
+
+    // 端口刚变过状态，invalidate 应把探针缓存一并清掉；非强制重探读到真实 true
+    portScanner.invalidate()
+    const fresh = await portScanner.probePort(FREE)
+    check('invalidate 后非强制探活读到真实 true', fresh === true, `got ${fresh}`)
+  } finally {
+    await new Promise((r) => server.close(r))
+  }
+}
+
 if (failures.length === 0) {
   console.log(`结果：通过 ${passed} 项，失败 0 项`)
   process.exit(0)

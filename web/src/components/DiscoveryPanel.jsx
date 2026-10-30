@@ -23,12 +23,18 @@ export function DiscoveryPanel({ onRegistered, onClose }) {
   const [batchMode, setBatchMode] = useState(false)
   const [selected, setSelected] = useState(() => new Set())
 
+  /** 拉取「分组 + 最新扫描结果」并写进 state；初始加载与补扫后复用同一份逻辑 */
+  const reloadData = useCallback(async () => {
+    const [groups, latestData] = await Promise.all([api.discoveryGroups(), api.discoveryLatest()])
+    setGrouping(groups)
+    setLatest(latestData)
+    return latestData
+  }, [])
+
   const loadLatest = useCallback(
     async ({ autoScan = false } = {}) => {
       try {
-        const [groups, latestData] = await Promise.all([api.discoveryGroups(), api.discoveryLatest()])
-        setGrouping(groups)
-        setLatest(latestData)
+        const latestData = await reloadData()
         // 面板打开时：若从未扫过或数据已陈旧（>2 分钟），后台静默补扫一次，省去手动点「立即扫描」
         if (autoScan) {
           const at = latestData?.scan?.at
@@ -37,9 +43,7 @@ export function DiscoveryPanel({ onRegistered, onClose }) {
             setScanning(true)
             try {
               await api.discoveryScan(false)
-              const [g2, l2] = await Promise.all([api.discoveryGroups(), api.discoveryLatest()])
-              setGrouping(g2)
-              setLatest(l2)
+              await reloadData()
             } catch (error) {
               toast.error('后台刷新本地服务失败', error.message)
             } finally {
@@ -51,7 +55,7 @@ export function DiscoveryPanel({ onRegistered, onClose }) {
         toast.error('读取扫描结果失败', error.message)
       }
     },
-    [toast],
+    [toast, reloadData],
   )
 
   useEffect(() => {

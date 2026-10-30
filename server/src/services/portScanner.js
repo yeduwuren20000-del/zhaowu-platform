@@ -209,12 +209,12 @@ export const portScanner = {
   findFreePort,
   waitForPort,
   probePort,
-  /** 清探针缓存（端口状态变化后可调用，避免 1.5s 内的陈旧判断） */
-  invalidateProbe() {
-    probeCache.clear()
-  },
+  /** 清端口状态缓存：同时清「全机监听表结果缓存」与「轻量探针缓存」。
+   *  端口刚变过状态（启动 / 停止 / 注册 / 设置变更）时，两处陈旧的"在不在监听"判断都要失效——
+   *  否则探活可能在 1.5s 内仍读到旧结论（比如刚启动的服务短暂被判为"没在运行"）。
+   *  inflight 保持不动：正在跑的那次扫描本身就是新鲜的，让后来的请求共享它。 */
   invalidate() {
-    // 只清结果缓存；inflight 保持不动：正在跑的那次本身就是新鲜的，让后来的请求共享它
     cache = { at: 0, entries: [] }
+    probeCache.clear()
   },
 }
