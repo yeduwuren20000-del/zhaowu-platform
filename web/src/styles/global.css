@@ -2000,9 +2000,25 @@ code,
   width: 100%;
 }
 
-.input:focus,
-.select:focus,
-.textarea:focus {
+.input:focus-visible,
+.select:focus-visible,
+.textarea:focus-visible {
+  border-color: var(--accent-border);
+  box-shadow: 0 0 0 2px var(--accent-soft);
+}
+
+/* 全局键盘焦点环：侧栏 / 菜单 / 项目行 / 待办 / 搜索结果 / 状态条 / 卡片折叠 ——
+   这些元素都是 Tab 可达的，但原本都没有 :focus-visible，键盘导航时焦点完全看不见。
+   统一用 accent 环，与 .btn 口径一致（只在键盘聚焦时出现，鼠标点击不闪）。 */
+.nav__item:focus-visible,
+.menu__item:focus-visible,
+.project-row:focus-visible,
+.todo:focus-visible,
+.search-pop__item:focus-visible,
+.card__toggle:focus-visible,
+.status-strip__item:focus-visible,
+.icon-button:focus-visible {
+  outline: none;
   border-color: var(--accent-border);
   box-shadow: 0 0 0 2px var(--accent-soft);
 }
@@ -2024,6 +2040,19 @@ code,
   font-size: var(--fs-sm);
   max-width: 560px;
   margin: 0 auto;
+}
+
+/* 空状态图标：淡色圆底，比纯文字更有"这里暂时没东西"的提示感，又不抢戏 */
+.empty__icon {
+  display: inline-grid;
+  place-items: center;
+  width: 46px;
+  height: 46px;
+  border-radius: 50%;
+  background: var(--surface-3);
+  border: 1px solid var(--border);
+  color: var(--muted-2);
+  margin-bottom: 12px;
 }
 
 .empty__title {

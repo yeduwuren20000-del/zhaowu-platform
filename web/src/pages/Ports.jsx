@@ -7,7 +7,7 @@ import { useEmbed } from '../hooks/useEmbed.jsx'
 import { PortTable } from '../components/PortTable.jsx'
 import { PageHint } from '../components/PageHint.jsx'
 import { statusMeta } from '../utils/format.js'
-import { Button, Card, ErrorNotice, Notice, SearchBox, SkeletonList, Switch, Tabs } from '../components/ui.jsx'
+import { Button, Card, EmptyState, ErrorNotice, Notice, SearchBox, SkeletonList, Switch, Tabs } from '../components/ui.jsx'
 
 export function PortsPage() {
   const location = useLocation()
@@ -127,6 +127,19 @@ export function PortsPage() {
       <Card flush>
         {loading && !data ? (
           <SkeletonList rows={6} />
+        ) : rows.length === 0 ? (
+          <EmptyState
+            icon="ports"
+            title="还没有任何端口记录"
+            hint="本机还没登记服务，或后端还没扫描到监听端口。先去「本地项目」启动一个，或用顶栏 Ctrl K 跑「自动发现本机服务」。"
+            action={
+              <Button icon="search" onClick={() => navigate('/projects', { state: { discovery: true } })}>
+                自动发现本机服务
+              </Button>
+            }
+          />
+        ) : filtered.length === 0 ? (
+          <EmptyState icon="search" title="没有匹配的记录" hint="换个关键词，或把筛选切回「全部」。" />
         ) : (
           <PortTable
             rows={filtered}

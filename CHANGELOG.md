@@ -217,6 +217,24 @@
 - 没装 Electron 时，`npm run desktop` 自动退回浏览器 app 模式兜底；新增 `.npmrc` 让 `npm install` 以后自动从 npmmirror 拉 Electron 二进制（避免直连 GitHub 超时）。
 - 诚实边界：窗口壳本身的白闪已根除；但**嵌进来的应用如果自己就是白底**，看到的仍是它自己的白——与上一轮"打开应用不闪白"结论一致。
 
+**Dashboard「资源总览」卡片：本机与服务器占用一目了然**
+
+- 之前首页只算服务器 SSH 资源均值，缺本机自身占用。现新增 `server/src/services/localResourceService.js`：Windows 用 CIM（`Get-CimInstance Win32_Processor` / `Win32_OperatingSystem` / `Win32_LogicalDisk`）即时读数，带 3s TTL 缓存（开销低、可缓存），核心聚合抽成纯函数 `normalizeLocalResources` 独立可测。
+- Dashboard 顶部新增「资源总览」卡片：分「本机」与「服务器·SSH 平均」两组，各显示 CPU / 内存 / 磁盘三项，**复用既有的 `Meter` 组件**（不另造一套）。阈值着色：≥85% 红、≥70% 黄、否则灰；任何一项无数据时降级为「暂无数据」，**不编数字**。
+- 磁盘占用按所有本地固定盘（DriveType=3）聚合 used/total/percent，CPU / 内存透传原值；非 Windows 平台或采集失败时返回 null 不抛错，卡片优雅降级（不会整页崩）。
+- 测试：`server/test/localResource.test.mjs`（14 项，含磁盘聚合、异常输入降级、仅磁盘也算占用率）全部通过；`project-resource` 37/37、`resource-history` 77/77 无回归。
+
+**全站键盘焦点环：键盘导航不再"看不见自己在哪"**
+
+- 之前 `.input/.select/.textarea` 已有 `:focus` 环，但侧栏菜单、项目行、搜索面板项、卡片开关等**键盘可达元素**全无 `:focus-visible`，纯键盘 Tab 走遍全站找不到焦点在哪——对键盘用户与可达性是硬伤。
+- 现在全局补统一 accent 焦点环（`.nav__item` / `.menu__item` / `.project-row` / `.todo` / `.search-pop__item` / `.card__toggle` / `.status-strip__item` / `.icon-button`），并把输入框的 `:focus` 收敛为 `:focus-visible`——鼠标点选不再亮环、键盘 Tab 才亮，符合现代可达性约定。
+
+**空状态图标化 + 端口页零空态补位**
+
+- `ui.jsx` 的 `EmptyState` 组件新增 `icon` 参数，渲染 46px 圆底图标（`surface-3` 背景、淡色图标），原本纯文字的空状态有了视觉锚点（`global.css` 加 `.empty__icon`）。
+- 此前「服务端口」页在零记录 / 无匹配时直接一片空白，没有任何引导。现补两处空态：全表为空 → 「还没有任何端口记录」+「自动发现本机服务」按钮；筛选无匹配 → 「没有匹配的记录」+ 重置入口；加载中走 `SkeletonList`。
+- 只动展示层（组件 / 样式 / 两页接线），不碰数据层与凭据库。
+
 ### 修复
 
 - **快速嵌入把垃圾文本的碎片留在表单里**：`!!!@@@###` 这类文本，原来只删掉认错的 `host`/`name`，却把解析出的 `username: "!!!"` 留下——用户点一下「快速填入」就得到一条半脏记录。现在只要判定 host 不像合法 IP/域名，**整个结果一起丢弃**并给出提示（host 都是乱码，说明这段文本根本不是服务器配置）。`server-quick-fill.test.mjs` 57 项，变异测试确认「退回到只删 host」会让断言变红。

@@ -49,9 +49,12 @@ export function Card({ title, subtitle, icon, actions, children, flush = false, 
   )
 }
 
-export function EmptyState({ title = '暂无数据', hint, action }) {
+export function EmptyState({ title = '暂无数据', hint, action, icon = 'box' }) {
   return (
     <div className="empty">
+      <div className="empty__icon">
+        <Icon name={icon} size={24} />
+      </div>
       <div className="empty__title">{title}</div>
       {hint ? <div>{hint}</div> : null}
       {action ? <div style={{ marginTop: 12 }}>{action}</div> : null}

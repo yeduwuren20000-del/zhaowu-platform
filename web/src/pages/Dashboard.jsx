@@ -10,8 +10,45 @@ import { OnboardingCard } from '../components/OnboardingCard.jsx'
 import { PageHint } from '../components/PageHint.jsx'
 import { PreflightCard } from '../components/PreflightCard.jsx'
 import { Icon } from '../components/Icons.jsx'
-import { Button, Card, EmptyState, ErrorNotice, SkeletonList, Switch } from '../components/ui.jsx'
-import { timeAgo } from '../utils/format.js'
+import { Button, Card, EmptyState, ErrorNotice, Meter, SkeletonList, Switch } from '../components/ui.jsx'
+import { timeAgo, formatBytes } from '../utils/format.js'
+
+/** 资源占用率 → 状态色：≥85% 红、≥70% 黄、否则中性灰（Meter 默认灰） */
+const RES_TONE = (p) => (p == null ? 'gray' : p >= 85 ? 'red' : p >= 70 ? 'amber' : 'gray')
+
+/** 一组资源表（本机 / 服务器）：CPU / 内存 / 磁盘三档 Meter，无数据降级提示 */
+function ResourceGroup({ title, cpu, mem, disk, memBytes, diskBytes }) {
+  const has = cpu != null || mem != null || disk != null
+  if (!has) {
+    return (
+      <div className="res-group">
+        <div className="res-group__title">{title}</div>
+        <div className="res-group__empty muted">暂无数据</div>
+      </div>
+    )
+  }
+  return (
+    <div className="res-group">
+      <div className="res-group__title">{title}</div>
+      <div className="res-group__meters">
+        <Meter label="CPU" percent={cpu} tone={RES_TONE(cpu)} />
+        <Meter
+          label="内存"
+          percent={mem}
+          tone={RES_TONE(mem)}
+          hint={memBytes ? `${formatBytes(memBytes.used)} / ${formatBytes(memBytes.total)}` : undefined}
+        />
+        <Meter
+          label="磁盘"
+          percent={disk}
+          tone={RES_TONE(disk)}
+          hint={diskBytes ? `${formatBytes(diskBytes.used)} / ${formatBytes(diskBytes.total)}` : undefined}
+        />
+      </div>
+    </div>
+  )
+}
+
 
 /**
  * 总览：只回答"现在怎么样、有没有异常"。
@@ -56,6 +93,11 @@ export function DashboardPage() {
 
   const runningProjects = projects.filter((project) => project.status === 'running' || project.status === 'starting')
   const conflictCount = stats?.conflicts?.value ?? projects.filter((project) => project.status === 'conflict').length
+  // 资源总览：本机（实采）+ 服务器 SSH 平均
+  const local = data?.local
+  const sshRes = data?.ssh
+  const localMemBytes = local?.memTotalBytes ? { used: local.memUsedBytes, total: local.memTotalBytes } : null
+  const localDiskBytes = local?.diskTotalBytes ? { used: local.diskUsedBytes, total: local.diskTotalBytes } : null
   // 环境体检里「必需但没就绪」的项：缺 Python 网盘功能就废了，必须进待处理
   const preflightMissing = (preflight?.items || []).filter((item) => !item.ok && item.required)
   const anomalyCount =
@@ -282,6 +324,31 @@ export function DashboardPage() {
           </div>
         </div>
       ) : null}
+
+      <Card title="资源总览" icon="activity" subtitle="本机与服务器资源占用">
+        {loading && !data ? (
+          <div className="res-overview">
+            <SkeletonList rows={2} />
+          </div>
+        ) : (
+          <div className="res-overview">
+            <ResourceGroup
+              title="本机"
+              cpu={local?.cpuPercent}
+              mem={local?.memPercent}
+              disk={local?.diskPercent}
+              memBytes={localMemBytes}
+              diskBytes={localDiskBytes}
+            />
+            <ResourceGroup
+              title="服务器 · SSH 平均"
+              cpu={sshRes?.avgCpuUsagePercent}
+              mem={sshRes?.avgMemoryUsedPercent}
+              disk={sshRes?.maxDiskUsedPercent}
+            />
+          </div>
+        )}
+      </Card>
 
       <div className="grid grid--main">
         <Card

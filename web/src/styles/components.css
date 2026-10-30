@@ -775,3 +775,36 @@
   font-size: var(--fs-xs);
   color: var(--muted-2);
 }
+
+/* ============ 资源总览（首页） ============ */
+.res-overview {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 14px;
+  padding: 12px;
+}
+
+.res-group {
+  border: 1px solid var(--border-soft);
+  border-radius: var(--radius);
+  padding: 10px 12px;
+  background: var(--surface-inset);
+}
+
+.res-group__title {
+  font-size: var(--fs-sm);
+  font-weight: 600;
+  color: var(--text-soft);
+  margin-bottom: 8px;
+}
+
+.res-group__meters {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.res-group__empty {
+  font-size: var(--fs-sm);
+  padding: 4px 0;
+}

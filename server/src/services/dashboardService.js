@@ -5,6 +5,7 @@ import { buildMappings } from './mappingService.js'
 import { buildProjectViews } from './projectService.js'
 import { listServerViews } from './serverService.js'
 import { getDiscoveryState } from './localDiscoveryService.js'
+import { getLocalResources } from './localResourceService.js'
 
 /** 首页总览：四张统计卡 + Docker 统计 + 项目/服务器/端口/日志区块 + 自动发现提醒 */
 export async function buildDashboard({ force = false } = {}) {
@@ -17,6 +18,8 @@ export async function buildDashboard({ force = false } = {}) {
   await observeProjectStates(projectViews)
   await observeMappingConflicts(conflicts)
   const timeline = await recentActivity(12)
+  // 本机资源：独立采集、失败静默降级，不拖累首页
+  const local = await getLocalResources({ force }).catch(() => null)
 
   const runningProjects = projectViews.filter((view) => view.status === 'running')
   const onlineServers = servers.filter((server) => server.online)
@@ -147,5 +150,6 @@ export async function buildDashboard({ force = false } = {}) {
     events,
     timeline,
     discovery,
+    local,
   }
 }
