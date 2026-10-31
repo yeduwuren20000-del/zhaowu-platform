@@ -19,6 +19,18 @@
  *   electron electron/main.cjs --kill      # 停止后端
  */
 
+// 防御：本文件必须由 electron 运行时加载。若被当作纯 Node 脚本运行
+// （典型原因：环境里误设了 ELECTRON_RUN_AS_NODE，使 electron 二进制退化成 Node），
+// 这里提前给出明确报错，而不是在 `app.setAppUserModelId` 处静默崩溃导致「打不开」。
+if (!process.versions.electron) {
+  console.error(
+    '[DevServerManager] 致命：electron/main.cjs 被当作普通 Node 脚本加载。\n' +
+      '                大概率环境变量 ELECTRON_RUN_AS_NODE 被误设，请用 scripts/electron-launch.cjs 启动，\n' +
+      '                或在系统/用户环境变量里删除 ELECTRON_RUN_AS_NODE 后重试。',
+  )
+  process.exit(1)
+}
+
 const { app, BrowserWindow, dialog } = require('electron')
 const fs = require('node:fs')
 const path = require('node:path')

@@ -104,13 +104,18 @@ function openAppWindow(browser) {
 async function main() {
   const kill = process.argv.includes('--kill')
 
-  // 装了 Electron 就优先用它拉起（无白闪）；没装才退回下面的浏览器 app 模式
+  // 装了 Electron 就优先用它拉起（无白闪）；没装才退回下面的浏览器 app 模式。
+  // 走 scripts/electron-launch.cjs：它会在启动前删除 ELECTRON_RUN_AS_NODE，
+  // 避免 electron 退化成纯 Node 导致「双击打不开」。
   const electronMain = path.join(ROOT, 'electron', 'main.cjs')
-  const hasElectron = fs.existsSync(path.join(ROOT, 'node_modules', 'electron'))
-  if (hasElectron && fs.existsSync(electronMain)) {
-    const args = ['run', 'electron', '--', ...(kill ? ['--kill'] : [])]
-    const npmBin = process.platform === 'win32' ? 'npm.cmd' : 'npm'
-    const child = spawn(npmBin, args, { cwd: ROOT, stdio: 'inherit', windowsHide: false })
+  const electronBin = path.join(ROOT, 'node_modules', 'electron', 'dist', 'electron.exe')
+  const hasElectron = fs.existsSync(electronBin) && fs.existsSync(electronMain)
+  if (hasElectron) {
+    const child = spawn(
+      process.execPath,
+      ['scripts/electron-launch.cjs', ...(kill ? ['--kill'] : [])],
+      { cwd: ROOT, stdio: 'inherit', windowsHide: false },
+    )
     child.on('exit', (code) => process.exit(code ?? 0))
     return
   }
