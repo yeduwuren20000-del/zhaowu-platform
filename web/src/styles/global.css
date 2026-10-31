@@ -2017,7 +2017,8 @@ code,
 .search-pop__item:focus-visible,
 .card__toggle:focus-visible,
 .status-strip__item:focus-visible,
-.icon-button:focus-visible {
+.icon-button:focus-visible,
+.link:focus-visible {
   outline: none;
   border-color: var(--accent-border);
   box-shadow: 0 0 0 2px var(--accent-soft);
@@ -2922,4 +2923,22 @@ code,
   background: var(--surface-2);
   padding: 1px 6px;
   border-radius: 4px;
+}
+
+/* ============ 无障碍：尊重系统「减少动态效果」 ============
+   部分用户（前庭功能障碍 / 单纯偏好静态界面）在系统里开了「减少动态效果」。
+   我们全站动效本就克制（140ms 的颜色/背景/微位移，外加 status-dot 的 pulse、
+   spinner 的 spin、嵌抽屉的淡入），但即便如此也要尊重该设置：关掉所有过渡与
+   动画、并关掉平滑滚动，避免眩晕。功能、布局完全不受影响，只是不再"动"。
+   做法：把过渡/动画时长压到接近 0、动画只播一次、平滑滚动退回瞬时。 */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+    transition-delay: 0ms !important;
+    scroll-behavior: auto !important;
+  }
 }

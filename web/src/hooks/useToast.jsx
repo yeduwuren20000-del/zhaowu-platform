@@ -34,9 +34,11 @@ export function ToastProvider({ children }) {
   return (
     <ToastContext.Provider value={value}>
       {children}
-      <div className="toast-wrap">
+      {/* 稳定的实时区域：aria-live 放在容器上，toast 动态增减时屏幕阅读器才会播报。
+          每条 toast 不再各自声明 role="status"（嵌套实时区域会导致重复播报）。 */}
+      <div className="toast-wrap" role="status" aria-live="polite" aria-atomic="false">
         {toasts.map((toast) => (
-          <div key={toast.id} className={`toast toast--${toast.type}`} onClick={() => remove(toast.id)} role="status">
+          <div key={toast.id} className={`toast toast--${toast.type}`} onClick={() => remove(toast.id)}>
             <div>
               {toast.title ? <div className="toast__title">{toast.title}</div> : null}
               {toast.message ? <div className="toast__msg">{toast.message}</div> : null}
