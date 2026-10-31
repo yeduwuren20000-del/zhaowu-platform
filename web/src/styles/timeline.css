@@ -122,3 +122,19 @@
   flex-wrap: wrap;
   gap: 5px;
 }
+
+/* 时间线日期锚点：跨多天事件时分隔每天，便于快速定位（跟随滚动，不吸顶，
+   避免整页滚动场景下 sticky 浮在页面头部之上） */
+.timeline__day {
+  margin: 10px 0 2px;
+  padding: 3px 8px;
+  font-size: var(--fs-xs);
+  font-weight: 600;
+  color: var(--accent);
+  background: var(--surface-2);
+  border-radius: var(--radius-xs);
+}
+
+.timeline__day:first-child {
+  margin-top: 0;
+}

@@ -173,3 +173,17 @@ export function eventDotColor(level) {
   if (level === 'success') return 'var(--green)'
   return 'var(--muted-2)'
 }
+
+/** 时间线日期锚点：今天 / 昨天 / 年-月-日。接收 'YYYY-MM-DD' 串、ISO 串或 Date */
+export function formatDayLabel(value) {
+  const d = value instanceof Date ? value : new Date(value)
+  if (Number.isNaN(d.getTime())) return '未知日期'
+  const now = new Date()
+  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate())
+  const that = new Date(d.getFullYear(), d.getMonth(), d.getDate())
+  const diff = Math.round((today - that) / 86400000)
+  if (diff === 0) return '今天'
+  if (diff === 1) return '昨天'
+  const pad = (n) => String(n).padStart(2, '0')
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`
+}

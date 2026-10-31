@@ -106,6 +106,7 @@ export async function buildDashboard({ force = false } = {}) {
       maxDiskUsedPercent: resourceList.length
         ? Math.max(...resourceList.map((item) => item.disk?.usePercent ?? 0))
         : null,
+      avgDiskUsedPercent: avg(resourceList.map((item) => item.disk?.usePercent)),
       audit: auditTotals,
     },
     docker: {

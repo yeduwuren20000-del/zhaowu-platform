@@ -147,7 +147,7 @@ export function TimelinePage() {
               hint={data?.total ? '换个筛选条件试试。' : '启动或停止一个项目、做一次 SSH 检测，这里就会记录变化。'}
             />
           ) : (
-            <EventTimeline events={items} />
+            <EventTimeline events={items} groupByDate />
           )}
         </div>
       </Card>

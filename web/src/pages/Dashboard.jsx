@@ -344,7 +344,7 @@ export function DashboardPage() {
               title="服务器 · SSH 平均"
               cpu={sshRes?.avgCpuUsagePercent}
               mem={sshRes?.avgMemoryUsedPercent}
-              disk={sshRes?.maxDiskUsedPercent}
+              disk={sshRes?.avgDiskUsedPercent}
             />
           </div>
         )}
