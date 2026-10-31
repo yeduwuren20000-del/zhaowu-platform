@@ -808,3 +808,76 @@
   font-size: var(--fs-sm);
   padding: 4px 0;
 }
+
+/* 资源档位钻取：超标时才可点，整块 Meter 变成按钮，hover/焦点可见 */
+.meter-drill {
+  appearance: none;
+  border: 0;
+  background: transparent;
+  padding: 2px 4px;
+  margin: 0 -4px;
+  width: calc(100% + 8px);
+  text-align: left;
+  cursor: pointer;
+  border-radius: var(--radius-sm);
+  transition: background 140ms ease;
+}
+
+.meter-drill:hover {
+  background: var(--surface-2);
+}
+
+.meter-drill:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 2px var(--accent-soft);
+}
+
+.meter-drill .meter__label::after {
+  content: ' ›';
+  color: var(--accent);
+}
+
+/* ============ 服务器页：钻取横幅 / 多选条 / 勾选框 ============ */
+.over-banner,
+.select-bar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 12px;
+  border-radius: var(--radius);
+  border: 1px solid var(--border-soft);
+  background: var(--surface-inset);
+  font-size: var(--fs-sm);
+  color: var(--text-soft);
+}
+
+.over-banner {
+  border-color: var(--accent-border);
+}
+
+.over-banner b,
+.select-bar b {
+  color: var(--text);
+}
+
+.srv-select {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--muted-2);
+  flex: 0 0 auto;
+}
+
+.server-row.is-checked .srv-select,
+.server-row.is-select-mode:hover .srv-select {
+  color: var(--accent);
+}
+
+.server-row.is-select-mode {
+  cursor: pointer;
+}
+
+.server-row.is-checked {
+  background: var(--surface-2);
+  box-shadow: inset 2px 0 0 var(--accent);
+}

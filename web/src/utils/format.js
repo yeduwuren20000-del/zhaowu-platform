@@ -118,6 +118,22 @@ export function usageTone(percent) {
   return 'gray'
 }
 
+/**
+ * 资源「超标」阈值：与首页资源卡片 RES_TONE（≥70 琥珀 / ≥85 红）对齐。
+ * 首页卡片点了超标档位后，服务器页据此筛出该指标 ≥ 此值的服务器。
+ */
+export const RES_OVER_THRESHOLD = 70
+
+/** 取某台服务器在指定资源指标上的占用率（与首页资源卡片同口径） */
+export function serverMetricPercent(server, metric) {
+  const resources = server?.resources
+  if (!resources) return null
+  if (metric === 'cpu') return resources.cpuUsagePercent ?? null
+  if (metric === 'mem') return resources.memory?.usedPercent ?? null
+  if (metric === 'disk') return resources.disk?.usePercent ?? null
+  return null
+}
+
 export const AUDIT_META = {
   ok: { text: '正常', tone: 'green', hint: '已登记且正在监听' },
   recordedNotListening: { text: '记录未监听', tone: 'amber', hint: '工作台里登记了，但远程没有监听' },

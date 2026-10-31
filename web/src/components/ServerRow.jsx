@@ -10,7 +10,7 @@ import { monitorMeta, sshTarget } from './serverShared.js'
  *   - 主操作（SSH 检测）常驻，其余收进「⋯」；
  *   - 异常（未登记端口 / 记录未监听 / 容器异常）才上色，正常项保持灰。
  */
-export function ServerRow({ server, selected, busy = {}, onSelect, onSshProbe, onTcpProbe, onEditServer, onDeleteServer }) {
+export function ServerRow({ server, selected, busy = {}, selectMode = false, checked = false, onToggleSelect, onSelect, onSshProbe, onTcpProbe, onEditServer, onDeleteServer }) {
   const meta = monitorMeta(server)
   const apps = server.apps || []
   const unrecorded = server.portAudit?.summary?.listeningNotRecorded || 0
@@ -23,18 +23,25 @@ export function ServerRow({ server, selected, busy = {}, onSelect, onSshProbe, o
 
   return (
     <div
-      className={`server-row ${selected ? 'is-selected' : ''}`}
+      className={`server-row ${selected ? 'is-selected' : ''} ${selectMode ? 'is-select-mode' : ''} ${checked ? 'is-checked' : ''}`}
       data-server-id={server.id}
       role="button"
       tabIndex={0}
-      onClick={() => onSelect?.(server.id)}
+      aria-pressed={selectMode ? checked : undefined}
+      onClick={() => (selectMode ? onToggleSelect?.(server.id) : onSelect?.(server.id))}
       onKeyDown={(event) => {
         if (event.key === 'Enter' || event.key === ' ') {
           event.preventDefault()
-          onSelect?.(server.id)
+          if (selectMode) onToggleSelect?.(server.id)
+          else onSelect?.(server.id)
         }
       }}
     >
+      {selectMode ? (
+        <span className="srv-select" aria-hidden="true">
+          <Icon name={checked ? 'checkSquare' : 'square'} size={16} />
+        </span>
+      ) : null}
       <StatusDot status={meta.status} />
       <span className="server-row__name">{server.name}</span>
       <span className={`status-word ${meta.status === 'conflict' ? 'is-error' : ''}`}>{meta.text}</span>

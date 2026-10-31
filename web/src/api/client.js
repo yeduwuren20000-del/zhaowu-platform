@@ -59,6 +59,8 @@ export const api = {
   // ---- 第二阶段：SSH 只读监控 ----
   sshProbeServer: (id, force = true) => request(`/servers/${id}/probe-ssh`, { method: 'POST', body: { force } }),
   sshProbeAll: (force = true, staleMs = 60000) => request('/servers/probe-ssh', { method: 'POST', body: { force, staleMs } }),
+  // 批量 SSH 采集：只采集指定 id 的服务器（勾选后「对选中 SSH 检测」用）
+  sshProbeServers: (ids = []) => request('/servers/probe-ssh', { method: 'POST', body: { ids, force: true, staleMs: 0 } }),
   serverPorts: (id, live = false) => request(`/servers/${id}/ports${live ? '?live=1' : ''}`),
   serverDocker: (id, live = false) => request(`/servers/${id}/docker${live ? '?live=1' : ''}`),
   serverLog: (id, path, lines = 200) =>

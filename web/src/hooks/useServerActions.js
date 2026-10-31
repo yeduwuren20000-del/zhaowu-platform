@@ -76,6 +76,21 @@ export function useServerActions(onChanged) {
         )
       }),
 
+    /** 批量 SSH 采集：只采指定 id（勾选若干台后「对选中 SSH 检测」） */
+    sshProbeServers: (ids = []) =>
+      exec('all:ssh', () => api.sshProbeServers(ids), (data, t) => {
+        if (!data) return
+        if (data.probed === 0) {
+          t.info('SSH 采集已跳过', '所选服务器都没有启用 SSH 监控')
+          return
+        }
+        const level = data.failed > 0 ? 'warn' : 'success'
+        t[level](
+          `SSH 采集完成：成功 ${data.probed - data.failed}/${data.probed}`,
+          `并发上限 ${data.concurrency}${data.failed ? ` · 失败 ${data.failed} 台（详见日志中心）` : ''}`,
+        )
+      }),
+
     probeApp: (server, app) =>
       exec(`app:${server.id}:${app.id}`, () => api.probeServerApp(server.id, app.id), (data, t) => {
         t[data?.online ? 'success' : 'warn'](

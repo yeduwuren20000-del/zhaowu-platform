@@ -16,8 +16,25 @@ import { timeAgo, formatBytes } from '../utils/format.js'
 /** 资源占用率 → 状态色：≥85% 红、≥70% 黄、否则中性灰（Meter 默认灰） */
 const RES_TONE = (p) => (p == null ? 'gray' : p >= 85 ? 'red' : p >= 70 ? 'amber' : 'gray')
 
+/** 可钻取的 Meter：超标（琥珀/红）时才可点，点击跳去服务器页看是哪几台拖了后腿 */
+function DrillableMeter({ label, percent, tone, hint, onDrill }) {
+  const meter = <Meter label={label} percent={percent} tone={tone} hint={hint} />
+  if (!onDrill || tone === 'gray') return meter
+  return (
+    <button
+      type="button"
+      className="meter-drill"
+      onClick={onDrill}
+      title={`查看哪些服务器「${label}」超标`}
+      aria-label={`查看哪些服务器「${label}」超标`}
+    >
+      {meter}
+    </button>
+  )
+}
+
 /** 一组资源表（本机 / 服务器）：CPU / 内存 / 磁盘三档 Meter，无数据降级提示 */
-function ResourceGroup({ title, cpu, mem, disk, memBytes, diskBytes }) {
+function ResourceGroup({ title, cpu, mem, disk, memBytes, diskBytes, onDrill }) {
   const has = cpu != null || mem != null || disk != null
   if (!has) {
     return (
@@ -31,18 +48,20 @@ function ResourceGroup({ title, cpu, mem, disk, memBytes, diskBytes }) {
     <div className="res-group">
       <div className="res-group__title">{title}</div>
       <div className="res-group__meters">
-        <Meter label="CPU" percent={cpu} tone={RES_TONE(cpu)} />
-        <Meter
+        <DrillableMeter label="CPU" percent={cpu} tone={RES_TONE(cpu)} onDrill={onDrill ? () => onDrill('cpu') : null} />
+        <DrillableMeter
           label="内存"
           percent={mem}
           tone={RES_TONE(mem)}
           hint={memBytes ? `${formatBytes(memBytes.used)} / ${formatBytes(memBytes.total)}` : undefined}
+          onDrill={onDrill ? () => onDrill('mem') : null}
         />
-        <Meter
+        <DrillableMeter
           label="磁盘"
           percent={disk}
           tone={RES_TONE(disk)}
           hint={diskBytes ? `${formatBytes(diskBytes.used)} / ${formatBytes(diskBytes.total)}` : undefined}
+          onDrill={onDrill ? () => onDrill('disk') : null}
         />
       </div>
     </div>
@@ -104,6 +123,9 @@ export function DashboardPage() {
     projects.filter((project) => !project.dirExists).length + (docker?.unhealthy ?? 0) + preflightMissing.length
 
   const openLog = useCallback((project) => navigate('/logs', { state: { source: `project:${project.id}` } }), [navigate])
+
+  /** 资源卡片点了某一超标档位：跳去服务器页，按该指标筛出拖后腿的服务器 */
+  const drillOverServers = useCallback((metric) => navigate('/servers', { state: { over: metric } }), [navigate])
 
   /** 环境问题没有专属页面，点击「去处理」就是把体检卡滚出来并展开（缺必需项时它本就自动展开） */
   const scrollToPreflight = useCallback(() => {
@@ -345,6 +367,7 @@ export function DashboardPage() {
               cpu={sshRes?.avgCpuUsagePercent}
               mem={sshRes?.avgMemoryUsedPercent}
               disk={sshRes?.avgDiskUsedPercent}
+              onDrill={drillOverServers}
             />
           </div>
         )}

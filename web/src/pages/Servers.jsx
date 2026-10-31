@@ -10,6 +10,7 @@ import { ServerDetail } from '../components/ServerDetail.jsx'
 import { AutoMonitorPanel } from '../components/AutoMonitorPanel.jsx'
 import { PageHint } from '../components/PageHint.jsx'
 import { Button, ConfirmDialog, EmptyState, ErrorNotice, SearchBox, SkeletonList, Switch, Tabs } from '../components/ui.jsx'
+import { RES_OVER_THRESHOLD, serverMetricPercent } from '../utils/format.js'
 
 export function ServersPage() {
   const location = useLocation()
@@ -31,6 +32,11 @@ export function ServersPage() {
   const [pendingDelete, setPendingDelete] = useState(null)
   const [pendingAppDelete, setPendingAppDelete] = useState(null)
   const [deleting, setDeleting] = useState(false)
+  // 来自首页资源卡片的钻取：只显示某指标超标的服务器（null 表示不钻取）
+  const [over, setOver] = useState(null)
+  // 多选模式：勾选若干台后批量 SSH 检测
+  const [selectMode, setSelectMode] = useState(false)
+  const [selectedIds, setSelectedIds] = useState(() => new Set())
 
   useEffect(() => {
     const state = location.state
@@ -45,6 +51,10 @@ export function ServersPage() {
       window.setTimeout(() => {
         document.querySelector(`[data-server-id="${state.focus}"]`)?.scrollIntoView({ behavior: 'smooth', block: 'center' })
       }, 220)
+    }
+    if (state.over) {
+      setOver(state.over)
+      setFilter('all')
     }
     if (state.q) setQuery(state.q)
     navigate(location.pathname, { replace: true, state: null })
@@ -91,19 +101,33 @@ export function ServersPage() {
     }
   }, [servers])
 
+  // 首页资源卡片钻取：筛出该指标 ≥ 阈值的、在线且有采集数据的服务器
+  const overServers = useMemo(() => {
+    if (!over) return null
+    return (servers || []).filter(
+      (server) =>
+        server.monitor?.online &&
+        server.resources &&
+        (serverMetricPercent(server, over) ?? -1) >= RES_OVER_THRESHOLD,
+    )
+  }, [servers, over])
+
   const filtered = useMemo(() => {
     const text = query.trim().toLowerCase()
-    const list = servers || []
+    // 钻取模式下只看超标服务器，标签页筛选让位给钻取结果
+    const list = overServers || servers || []
     return list.filter((server) => {
-      if (filter === 'online' && !server.monitor?.online) return false
-      if (filter === 'offline' && !(server.monitor?.at && !server.monitor.online)) return false
-      if (filter === 'unregistered' && !((server.auditSummary?.listeningNotRecorded || 0) > 0)) return false
+      if (!over) {
+        if (filter === 'online' && !server.monitor?.online) return false
+        if (filter === 'offline' && !(server.monitor?.at && !server.monitor.online)) return false
+        if (filter === 'unregistered' && !((server.auditSummary?.listeningNotRecorded || 0) > 0)) return false
+      }
       if (!text) return true
       return [server.name, server.host, server.os, server.remark, server.sshPort, server.username]
         .filter((value) => value !== null && value !== undefined)
         .some((value) => String(value).toLowerCase().includes(text))
     })
-  }, [servers, query, filter])
+  }, [servers, query, filter, overServers])
 
   // 没有选中项时默认展开第一台，详情页始终有内容
   const selected = useMemo(() => filtered.find((server) => server.id === selectedId) || filtered[0] || null, [filtered, selectedId])
@@ -182,6 +206,24 @@ export function ServersPage() {
     if (result?.failed > 0) setFilter('all')
   }
 
+  function toggleSelect(id) {
+    setSelectedIds((prev) => {
+      const next = new Set(prev)
+      if (next.has(id)) next.delete(id)
+      else next.add(id)
+      return next
+    })
+  }
+
+  async function sshProbeSelected() {
+    const ids = [...selectedIds]
+    if (ids.length === 0) return
+    const result = await actions.sshProbeServers(ids)
+    setSelectedIds(new Set())
+    setSelectMode(false)
+    if (result?.failed > 0) setFilter('all')
+  }
+
   return (
     <div className="page">
       <div className="page__header">
@@ -193,6 +235,16 @@ export function ServersPage() {
           </Button>
           <Button variant="primary" icon="wifi" loading={actions.isBusy('all:ssh')} onClick={sshProbeAll}>
             全部 SSH 检测
+          </Button>
+          <Button
+            icon={selectMode ? 'checkSquare' : 'square'}
+            variant={selectMode ? 'primary' : undefined}
+            onClick={() => {
+              setSelectMode((value) => !value)
+              setSelectedIds(new Set())
+            }}
+          >
+            {selectMode ? '退出选择' : '选择'}
           </Button>
           <Button icon="plus" onClick={() => setServerForm({ open: true, initial: null })}>
             新增服务器
@@ -225,6 +277,35 @@ export function ServersPage() {
         </span>
       </div>
 
+      {/* 首页资源卡片钻取：只列出某指标超标的服务器，可一键清除回到全部 */}
+      {over ? (
+        <div className="over-banner">
+          <span>
+            显示 <b>{(overServers || []).length}</b> 台「
+            {over === 'cpu' ? 'CPU 占用偏高' : over === 'mem' ? '内存占用偏高' : '磁盘占用偏高'}」的服务器
+          </span>
+          <Button size="sm" icon="x" onClick={() => setOver(null)}>
+            清除筛选
+          </Button>
+        </div>
+      ) : null}
+
+      {/* 多选模式：勾选若干台后批量 SSH 检测 */}
+      {selectMode ? (
+        <div className="select-bar">
+          <span>
+            已选 <b>{selectedIds.size}</b> 台
+          </span>
+          <div className="spacer" />
+          <Button size="sm" icon="wifi" variant="primary" loading={actions.isBusy('all:ssh')} disabled={selectedIds.size === 0} onClick={sshProbeSelected}>
+            对选中 SSH 检测
+          </Button>
+          <Button size="sm" icon="x" onClick={() => { setSelectedIds(new Set()); setSelectMode(false) }}>
+            取消
+          </Button>
+        </div>
+      ) : null}
+
       {error ? <ErrorNotice error={error} onRetry={() => reload().catch(() => {})} /> : null}
 
       {loading && !servers ? (
@@ -234,11 +315,13 @@ export function ServersPage() {
       ) : filtered.length === 0 ? (
         <div className="card card--empty">
           <EmptyState
-            title={query || filter !== 'all' ? '没有匹配的服务器' : '还没有添加服务器'}
+            title={over ? '没有该指标超标的服务器' : query || filter !== 'all' ? '没有匹配的服务器' : '还没有添加服务器'}
             hint={
-              query || filter !== 'all'
-                ? '换个关键字或筛选条件试试。'
-                : '添加服务器后，工作台会通过 SSH 只读采集 CPU / 内存 / 磁盘 / 监听端口，并与你登记的 APP 做端口核对。'
+              over
+                ? '当前在线服务器该指标都在正常范围内。'
+                : query || filter !== 'all'
+                  ? '换个关键字或筛选条件试试。'
+                  : '添加服务器后，工作台会通过 SSH 只读采集 CPU / 内存 / 磁盘 / 监听端口，并与你登记的 APP 做端口核对。'
             }
             action={
               query || filter !== 'all' ? null : (
@@ -263,6 +346,9 @@ export function ServersPage() {
                 server={server}
                 selected={server.id === selectedId}
                 busy={actions.busy}
+                selectMode={selectMode}
+                checked={selectedIds.has(server.id)}
+                onToggleSelect={toggleSelect}
                 onSelect={setSelectedId}
                 onSshProbe={actions.sshProbe}
                 onTcpProbe={actions.tcpProbe}

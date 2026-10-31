@@ -46,6 +46,7 @@ router.post(
     const result = await monitorServers({
       force: req.query.force === '1' || req.body?.force === true,
       staleMs: Number(req.body?.staleMs) || 60000,
+      ids: Array.isArray(req.body?.ids) ? req.body.ids : null,
     })
     sendOk(res, { ...result, limiter: limiterStats(), servers: await listServerViews() })
   }),
