@@ -311,6 +311,8 @@
 - **端口缓存失效统一 + 删死代码**：`portScanner.invalidate()` 现在同时清「全机监听表结果缓存」与「轻量探针缓存」，删掉**从不调用**的 `invalidateProbe()`（纯死代码）。副作用是正收益：刚启动/停止/注册/改设置后，打开应用探活**不会再读到 1.5s 内的陈旧"没在运行"**——此前 `invalidate` 只清扫描缓存、漏了探针缓存，刚拉起的服务可能短暂被判 down。新增 3 项测试（`invalidate` 后非强制探活读到真实状态）锁住；`portScanner.test.mjs` 9 → **12 项**全过。
 - **本地服务面板去重**：`DiscoveryPanel` 抽出 `reloadData()`（拉「分组 + 最新结果」并写 state），初始加载与后台补扫复用同一份，去掉两处重复的 `Promise.all([discoveryGroups(), discoveryLatest()])`。行为等价，逻辑更短。
 
+- **Electron 桌面壳启动：后端用错运行时导致闪白 + 打不开**（回归修复）：上一轮封装 Electron 时，`startServer()` 用 `process.execPath` 拉起后端，但在 Electron 主进程里 `process.execPath` 是 **electron 自己**而非 node —— 等于用 Electron 二进制去跑后端 Node 脚本，要先初始化整座 Chromium，启动极慢且不稳，**后端常常起不来**：起不来就走 25s 超时弹"后端启动失败"错误框（表现为"打不开"），或勉强起了但连接异常、Chromium 渲染默认浅色错误页（表现为"闪白"）。现在新增 `resolveNode()` 优先取真正的 node（`npm_node_execpath` → PATH 中能跑 `node --version` 的 → Windows 按 `PATHEXT` 在 PATH 目录里找），`startServer()` 改用它；并加两层防御：① `loadURL` 失败时不再显示 Chromium 浅色错误页，改用深色"正在连接后端…"提示页并每 4s 自动重试，后端一旦就绪自动切回工作台；② `ready-to-show` 加 20s 兜底避免窗口永不显示。另把启动关键步骤（NODE_BIN / 后端 pid / health / 各分支）写入 `data/logs/electron-boot.log`，本机"打不开"时可直接看卡在哪一步（日志落 `data/logs`，不触碰凭据库）。`node --check` 通过；`resolveNode()` 在 Windows 上实测返回可用的 `node`。
+
 ### 变更
 
 - **项目页默认折叠「未识别目录的服务」**（DOM 1849 → 102，减少 94%）：该区块原先**无条件全量渲染** `loose` 分组，而这类候选在真实机器上常有几十个（实测 56 行 / `dsh-profile-desktop`），会把已登记的项目挤到视口之外，"一目了然"变成"往下翻"。现改为默认折叠、按需渲染，交互与其它分组卡一致；折叠时头部给出「N 组 · M 个服务」摘要 + 「去登记」快捷入口，**一条信息都没丢**（展开后 56 行仍全部可见）。
